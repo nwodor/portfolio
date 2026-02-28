@@ -15,6 +15,7 @@ window.addEventListener('scroll', () => {
 // ── MODAL HELPERS ──
 const blogModal  = document.getElementById('blog-modal');
 const writeModal = document.getElementById('write-modal');
+const adminModal = document.getElementById('admin-modal');
 
 document.getElementById('open-write-btn').addEventListener('click', () => {
   currentEditId = null;
@@ -29,9 +30,16 @@ document.getElementById('open-write-btn').addEventListener('click', () => {
 
 document.getElementById('close-write-modal').addEventListener('click', () => writeModal.classList.remove('open'));
 document.getElementById('close-blog-modal').addEventListener('click', () => blogModal.classList.remove('open'));
+document.getElementById('close-admin-modal').addEventListener('click', () => adminModal.classList.remove('open'));
 
 blogModal.addEventListener('click',  e => { if (e.target === blogModal)  blogModal.classList.remove('open'); });
 writeModal.addEventListener('click', e => { if (e.target === writeModal) writeModal.classList.remove('open'); });
+adminModal.addEventListener('click', e => { if (e.target === adminModal) adminModal.classList.remove('open'); });
+
+// Subtle admin trigger — nearly invisible bottom-left button
+document.getElementById('admin-trigger').addEventListener('click', () => {
+  adminModal.classList.add('open');
+});
 
 // ── CONTACT FORM ──
 document.getElementById('cf-submit').addEventListener('click', () => {
@@ -44,11 +52,12 @@ document.getElementById('cf-submit').addEventListener('click', () => {
 // ── BLOG STATE ──
 let allPosts      = [];
 let currentEditId = null;
+let isAdmin       = false;
 let firebaseReady = false;
 let fbDb          = null;
 let fbMod         = null;
 
-// ── LOCAL STORAGE (default storage — always works) ──
+// ── LOCAL STORAGE (default when Firebase isn't configured) ──
 const LS_KEY = 'portfolio_blog_posts';
 const ls = {
   getAll() {
@@ -79,6 +88,13 @@ const ls = {
   },
 };
 
+// ── ADMIN UI: show/hide controls based on login state ──
+function updateAdminUI() {
+  document.getElementById('open-write-btn').style.display  = isAdmin ? 'inline-flex' : 'none';
+  document.getElementById('admin-logout-btn').style.display = isAdmin ? 'inline-flex' : 'none';
+  renderPosts(allPosts); // re-render so edit/delete buttons appear/disappear
+}
+
 // ── BLOG: OPEN POST MODAL ──
 function openPost(id) {
   const p = allPosts.find(x => x.id === id);
@@ -108,10 +124,11 @@ function renderPosts(posts) {
         <h3>${p.title}</h3>
         <p>${p.content.slice(0, 100)}${p.content.length > 100 ? '...' : ''}</p>
         <div class="blog-date">${p.date}</div>
+        ${isAdmin ? `
         <div class="blog-card-actions">
           <button class="blog-action-btn" onclick="editPost('${p.id}', event)">Edit</button>
           <button class="blog-action-btn delete" onclick="deletePost('${p.id}', event)">Delete</button>
-        </div>
+        </div>` : ''}
       </div>
     </div>
   `).join('');
@@ -135,6 +152,7 @@ window.editPost = function(id, event) {
 // ── BLOG: DELETE ──
 window.deletePost = async function(id, event) {
   event.stopPropagation();
+  if (!isAdmin) return;
   if (!confirm('Delete this post? This cannot be undone.')) return;
   if (firebaseReady) {
     try {
@@ -150,8 +168,9 @@ window.deletePost = async function(id, event) {
   renderPosts(allPosts);
 };
 
-// ── BLOG: PUBLISH / UPDATE (registered immediately — always works) ──
+// ── BLOG: PUBLISH / UPDATE ──
 document.getElementById('publish-btn').addEventListener('click', async () => {
+  if (!isAdmin && firebaseReady) return; // safety guard
   const title   = document.getElementById('post-title').value.trim();
   const tag     = document.getElementById('post-tag').value.trim();
   const content = document.getElementById('post-content').value.trim();
@@ -169,7 +188,6 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
 
   try {
     if (firebaseReady) {
-      // ── Firebase path ──
       if (currentEditId) {
         status.textContent = 'Updating...';
         await fbMod.updateDoc(fbMod.doc(fbDb, 'posts', currentEditId), { title, tag, content });
@@ -181,7 +199,6 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
         });
         status.textContent = '✓ Post published!';
       }
-      // Reload from Firestore to get accurate server timestamp / order
       const q    = fbMod.query(fbMod.collection(fbDb, 'posts'), fbMod.orderBy('createdAt', 'desc'));
       const snap = await fbMod.getDocs(q);
       allPosts   = snap.docs.map(d => ({
@@ -191,7 +208,6 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
       }));
       renderPosts(allPosts);
     } else {
-      // ── localStorage path ──
       if (currentEditId) {
         status.textContent = 'Saving...';
         allPosts = ls.update(currentEditId, { title, tag, content });
@@ -204,7 +220,6 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
       renderPosts(allPosts);
     }
 
-    // Reset form & modal
     document.getElementById('post-title').value   = '';
     document.getElementById('post-tag').value     = '';
     document.getElementById('post-content').value = '';
@@ -222,11 +237,58 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
   }
 });
 
-// ── FIREBASE (optional upgrade — switches storage to Firestore when configured) ──
+// ── FIREBASE ──
 window.addEventListener('firebase-ready', async () => {
   fbDb  = window._db;
   fbMod = window._fbModules;
 
+  const { onAuthStateChanged, signInWithEmailAndPassword, signOut } = window._fbAuth;
+  const auth = window._auth;
+
+  // ── AUTH STATE LISTENER ──
+  onAuthStateChanged(auth, (user) => {
+    isAdmin = !!user;
+    updateAdminUI();
+  });
+
+  // ── ADMIN LOGIN ──
+  document.getElementById('admin-login-btn').addEventListener('click', async () => {
+    const email    = document.getElementById('admin-email').value.trim();
+    const password = document.getElementById('admin-password').value;
+    const status   = document.getElementById('admin-login-status');
+
+    if (!email || !password) {
+      status.textContent   = '⚠ Email and password required.';
+      status.style.display = 'block';
+      return;
+    }
+
+    try {
+      status.textContent   = 'Logging in...';
+      status.style.color   = 'var(--lime)';
+      status.style.display = 'block';
+      await signInWithEmailAndPassword(auth, email, password);
+      adminModal.classList.remove('open');
+      document.getElementById('admin-email').value    = '';
+      document.getElementById('admin-password').value = '';
+      status.style.display = 'none';
+    } catch (err) {
+      status.textContent = '✕ ' + err.message;
+      status.style.color = '#ef4444';
+    }
+  });
+
+  // Allow Enter key to submit login
+  document.getElementById('admin-password').addEventListener('keydown', e => {
+    if (e.key === 'Enter') document.getElementById('admin-login-btn').click();
+  });
+
+  // ── ADMIN LOGOUT ──
+  document.getElementById('admin-logout-btn').addEventListener('click', async () => {
+    await signOut(auth);
+  });
+
+  // ── LOAD POSTS FROM FIRESTORE ──
   try {
     const q    = fbMod.query(fbMod.collection(fbDb, 'posts'), fbMod.orderBy('createdAt', 'desc'));
     const snap = await fbMod.getDocs(q);
@@ -241,11 +303,18 @@ window.addEventListener('firebase-ready', async () => {
     }));
     renderPosts(allPosts);
   } catch {
-    // Firebase not configured or unreachable — localStorage mode stays active
-    console.info('Firebase unavailable — blog running on localStorage.');
+    // Firebase not configured — stay in localStorage mode, admin controls always visible
+    console.info('Firebase unavailable — using localStorage. Admin controls unlocked.');
+    isAdmin = true; // local mode: full access
+    updateAdminUI();
   }
 });
 
-// ── INITIAL RENDER (show localStorage posts right away, before Firebase resolves) ──
+// ── INITIAL RENDER (localStorage, shown immediately before Firebase resolves) ──
 allPosts = ls.getAll();
+// In localStorage mode, admin is always on (local device only)
+if (!firebaseReady) {
+  isAdmin = true;
+  updateAdminUI();
+}
 renderPosts(allPosts);

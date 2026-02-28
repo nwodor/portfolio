@@ -23,6 +23,8 @@
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-app.js";
     import { getFirestore, collection, addDoc, getDocs, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp }
       from "https://www.gstatic.com/firebasejs/10.12.0/firebase-firestore.js";
+    import { getAuth, onAuthStateChanged, signInWithEmailAndPassword, signOut }
+      from "https://www.gstatic.com/firebasejs/10.12.0/firebase-auth.js";
 
     // ── REPLACE THESE WITH YOUR FIREBASE PROJECT CONFIG ──
     const firebaseConfig = {
@@ -34,11 +36,14 @@
       appId:             "YOUR_APP_ID"
     };
 
-    const app = initializeApp(firebaseConfig);
-    const db  = getFirestore(app);
+    const app  = initializeApp(firebaseConfig);
+    const db   = getFirestore(app);
+    const auth = getAuth(app);
 
-    window._db        = db;
+    window._db       = db;
+    window._auth     = auth;
     window._fbModules = { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, orderBy, query, serverTimestamp };
+    window._fbAuth    = { onAuthStateChanged, signInWithEmailAndPassword, signOut };
     window.dispatchEvent(new Event("firebase-ready"));
   </script>
 </head>
@@ -343,7 +348,10 @@
           <div class="lime-divider"></div>
           <h2 class="section-title">Thoughts &amp; <em>Articles</em></h2>
         </div>
-        <button class="btn-lime" id="open-write-btn">+ Write Post</button>
+        <div style="display:flex;gap:0.75rem;align-items:center">
+          <button class="btn-lime" id="open-write-btn" style="display:none">+ Write Post</button>
+          <button class="btn-outline" id="admin-logout-btn" style="display:none;font-size:0.72rem">Logout</button>
+        </div>
       </div>
 
       <div class="blog-grid" id="blog-posts-container">
@@ -464,6 +472,31 @@
       </div>
     </div>
   </div>
+
+  <!-- ── ADMIN LOGIN MODAL ── -->
+  <div id="admin-modal" class="modal-overlay">
+    <div class="modal-box" style="max-width:420px">
+      <div class="modal-header">
+        <button class="modal-close" id="close-admin-modal">✕</button>
+        <h2 style="font-size:1.1rem;font-weight:800;color:#fff;margin-top:0.5rem">Admin Access</h2>
+      </div>
+      <div class="modal-body">
+        <div class="form-group">
+          <label>Email</label>
+          <input type="email" id="admin-email" placeholder="your@email.com" />
+        </div>
+        <div class="form-group">
+          <label>Password</label>
+          <input type="password" id="admin-password" placeholder="••••••••" />
+        </div>
+        <button class="btn-lime" id="admin-login-btn" style="width:100%;justify-content:center">Login →</button>
+        <p id="admin-login-status" style="font-family:'JetBrains Mono',monospace;font-size:0.72rem;color:#ef4444;text-align:center;margin-top:0.75rem;display:none"></p>
+      </div>
+    </div>
+  </div>
+
+  <!-- Subtle admin trigger — bottom-left corner, nearly invisible -->
+  <button id="admin-trigger" title="" aria-label="admin" style="position:fixed;bottom:6px;left:6px;width:18px;height:18px;background:none;border:none;cursor:pointer;opacity:0.08;z-index:999;padding:0;border-radius:50%"></button>
 
   <!-- Your Script -->
   <script src="js/main.js"></script>
