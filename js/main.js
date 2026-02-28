@@ -111,7 +111,7 @@ window.openPost = openPost;
 function renderPosts(posts) {
   const container = document.getElementById('blog-posts-container');
   if (!posts.length) {
-    container.innerHTML = '<div class="empty-state">No posts yet. Write your first one! ✍️</div>';
+    container.innerHTML = '<div class="empty-state">No posts yet. coming soon! ✍️</div>';
     return;
   }
   container.innerHTML = posts.map(p => `
