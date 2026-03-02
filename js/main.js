@@ -51,8 +51,8 @@ document.getElementById('admin-trigger').addEventListener('click', () => {
 
 // ── CONTACT FORM ──
 // ⬇ Replace these two values with yours from emailjs.com → Email Services & Email Templates
-const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';
-const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
+const EMAILJS_SERVICE_ID  = 'service_qajjgi9';
+const EMAILJS_TEMPLATE_ID = 'template_q2bustc';
 
 const cfName    = document.getElementById('cf-name');
 const cfEmail   = document.getElementById('cf-email');
