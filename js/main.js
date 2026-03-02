@@ -12,6 +12,14 @@ window.addEventListener('scroll', () => {
   });
 });
 
+// ── STATUS COLORS & HELPER ──
+const C = { ok: 'var(--lime)', warn: '#f59e0b', err: '#ef4444' };
+function showStatus(el, msg, color) {
+  el.textContent   = msg;
+  el.style.color   = color;
+  el.style.display = 'block';
+}
+
 // ── MODAL HELPERS ──
 const blogModal  = document.getElementById('blog-modal');
 const writeModal = document.getElementById('write-modal');
@@ -46,24 +54,27 @@ document.getElementById('admin-trigger').addEventListener('click', () => {
 const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';
 const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
 
-document.getElementById('cf-submit').addEventListener('click', async () => {
-  const name    = document.getElementById('cf-name').value.trim();
-  const email   = document.getElementById('cf-email').value.trim();
-  const subject = document.getElementById('cf-subject').value.trim();
-  const message = document.getElementById('cf-message').value.trim();
-  const statusEl = document.getElementById('cf-status');
-  const btn      = document.getElementById('cf-submit');
+const cfName    = document.getElementById('cf-name');
+const cfEmail   = document.getElementById('cf-email');
+const cfSubject = document.getElementById('cf-subject');
+const cfMessage = document.getElementById('cf-message');
+const cfStatus  = document.getElementById('cf-status');
+const cfBtn     = document.getElementById('cf-submit');
+
+cfBtn.addEventListener('click', async () => {
+  const name    = cfName.value.trim();
+  const email   = cfEmail.value.trim();
+  const subject = cfSubject.value.trim();
+  const message = cfMessage.value.trim();
 
   if (!name || !email || !message) {
-    statusEl.textContent   = '⚠ Please fill in your name, email and message.';
-    statusEl.style.color   = '#f59e0b';
-    statusEl.style.display = 'block';
+    showStatus(cfStatus, '⚠ Please fill in your name, email and message.', C.warn);
     return;
   }
 
-  btn.disabled    = true;
-  btn.textContent = 'Sending...';
-  statusEl.style.display = 'none';
+  cfBtn.disabled    = true;
+  cfBtn.textContent = 'Sending...';
+  cfStatus.style.display = 'none';
 
   try {
     await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
@@ -72,22 +83,13 @@ document.getElementById('cf-submit').addEventListener('click', async () => {
       subject:    subject || 'Portfolio Contact',
       message:    message,
     });
-
-    statusEl.textContent   = '✓ Message sent! I\'ll get back to you soon.';
-    statusEl.style.color   = 'var(--lime)';
-    statusEl.style.display = 'block';
-
-    document.getElementById('cf-name').value    = '';
-    document.getElementById('cf-email').value   = '';
-    document.getElementById('cf-subject').value = '';
-    document.getElementById('cf-message').value = '';
-  } catch (err) {
-    statusEl.textContent   = '✕ Failed to send — please email me directly.';
-    statusEl.style.color   = '#ef4444';
-    statusEl.style.display = 'block';
+    showStatus(cfStatus, '✓ Message sent! I\'ll get back to you soon.', C.ok);
+    cfName.value = cfEmail.value = cfSubject.value = cfMessage.value = '';
+  } catch {
+    showStatus(cfStatus, '✕ Failed to send — please email me directly.', C.err);
   } finally {
-    btn.disabled    = false;
-    btn.textContent = 'Send Message →';
+    cfBtn.disabled    = false;
+    cfBtn.textContent = 'Send Message →';
   }
 });
 
@@ -219,27 +221,22 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
   const status  = document.getElementById('publish-status');
 
   if (!title || !content) {
-    status.textContent   = '⚠ Title and content are required.';
-    status.style.color   = '#f59e0b';
-    status.style.display = 'block';
+    showStatus(status, '⚠ Title and content are required.', C.warn);
     return;
   }
-
-  status.style.color   = 'var(--lime)';
-  status.style.display = 'block';
 
   try {
     if (firebaseReady) {
       if (currentEditId) {
-        status.textContent = 'Updating...';
+        showStatus(status, 'Updating...', C.ok);
         await fbMod.updateDoc(fbMod.doc(fbDb, 'posts', currentEditId), { title, tag, content });
-        status.textContent = '✓ Post updated!';
+        showStatus(status, '✓ Post updated!', C.ok);
       } else {
-        status.textContent = 'Publishing...';
+        showStatus(status, 'Publishing...', C.ok);
         await fbMod.addDoc(fbMod.collection(fbDb, 'posts'), {
           title, tag, content, createdAt: fbMod.serverTimestamp(),
         });
-        status.textContent = '✓ Post published!';
+        showStatus(status, '✓ Post published!', C.ok);
       }
       const q    = fbMod.query(fbMod.collection(fbDb, 'posts'), fbMod.orderBy('createdAt', 'desc'));
       const snap = await fbMod.getDocs(q);
@@ -251,13 +248,13 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
       renderPosts(allPosts);
     } else {
       if (currentEditId) {
-        status.textContent = 'Saving...';
+        showStatus(status, 'Saving...', C.ok);
         allPosts = ls.update(currentEditId, { title, tag, content });
-        status.textContent = '✓ Post updated!';
+        showStatus(status, '✓ Post updated!', C.ok);
       } else {
-        status.textContent = 'Saving...';
+        showStatus(status, 'Saving...', C.ok);
         allPosts = ls.add({ title, tag, content });
-        status.textContent = '✓ Post published!';
+        showStatus(status, '✓ Post published!', C.ok);
       }
       renderPosts(allPosts);
     }
@@ -274,8 +271,7 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
       status.style.display = 'none';
     }, 1500);
   } catch (err) {
-    status.textContent = '✕ Error: ' + err.message;
-    status.style.color = '#ef4444';
+    showStatus(status, '✕ Error: ' + err.message, C.err);
   }
 });
 
@@ -300,23 +296,19 @@ window.addEventListener('firebase-ready', async () => {
     const status   = document.getElementById('admin-login-status');
 
     if (!email || !password) {
-      status.textContent   = '⚠ Email and password required.';
-      status.style.display = 'block';
+      showStatus(status, '⚠ Email and password required.', C.warn);
       return;
     }
 
     try {
-      status.textContent   = 'Logging in...';
-      status.style.color   = 'var(--lime)';
-      status.style.display = 'block';
+      showStatus(status, 'Logging in...', C.ok);
       await signInWithEmailAndPassword(auth, email, password);
       adminModal.classList.remove('open');
       document.getElementById('admin-email').value    = '';
       document.getElementById('admin-password').value = '';
       status.style.display = 'none';
     } catch (err) {
-      status.textContent = '✕ ' + err.message;
-      status.style.color = '#ef4444';
+      showStatus(status, '✕ ' + err.message, C.err);
     }
   });
 
