@@ -42,11 +42,53 @@ document.getElementById('admin-trigger').addEventListener('click', () => {
 });
 
 // ── CONTACT FORM ──
-document.getElementById('cf-submit').addEventListener('click', () => {
-  const status = document.getElementById('cf-status');
-  status.textContent = '✓ Message sent! (Connect EmailJS or Formspree to activate)';
-  status.style.display = 'block';
-  setTimeout(() => (status.style.display = 'none'), 4000);
+// ⬇ Replace these two values with yours from emailjs.com → Email Services & Email Templates
+const EMAILJS_SERVICE_ID  = 'YOUR_SERVICE_ID';
+const EMAILJS_TEMPLATE_ID = 'YOUR_TEMPLATE_ID';
+
+document.getElementById('cf-submit').addEventListener('click', async () => {
+  const name    = document.getElementById('cf-name').value.trim();
+  const email   = document.getElementById('cf-email').value.trim();
+  const subject = document.getElementById('cf-subject').value.trim();
+  const message = document.getElementById('cf-message').value.trim();
+  const statusEl = document.getElementById('cf-status');
+  const btn      = document.getElementById('cf-submit');
+
+  if (!name || !email || !message) {
+    statusEl.textContent   = '⚠ Please fill in your name, email and message.';
+    statusEl.style.color   = '#f59e0b';
+    statusEl.style.display = 'block';
+    return;
+  }
+
+  btn.disabled    = true;
+  btn.textContent = 'Sending...';
+  statusEl.style.display = 'none';
+
+  try {
+    await emailjs.send(EMAILJS_SERVICE_ID, EMAILJS_TEMPLATE_ID, {
+      from_name:  name,
+      from_email: email,
+      subject:    subject || 'Portfolio Contact',
+      message:    message,
+    });
+
+    statusEl.textContent   = '✓ Message sent! I\'ll get back to you soon.';
+    statusEl.style.color   = 'var(--lime)';
+    statusEl.style.display = 'block';
+
+    document.getElementById('cf-name').value    = '';
+    document.getElementById('cf-email').value   = '';
+    document.getElementById('cf-subject').value = '';
+    document.getElementById('cf-message').value = '';
+  } catch (err) {
+    statusEl.textContent   = '✕ Failed to send — please email me directly.';
+    statusEl.style.color   = '#ef4444';
+    statusEl.style.display = 'block';
+  } finally {
+    btn.disabled    = false;
+    btn.textContent = 'Send Message →';
+  }
 });
 
 // ── BLOG STATE ──
