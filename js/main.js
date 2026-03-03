@@ -20,6 +20,16 @@ function showStatus(el, msg, color) {
   el.style.display = 'block';
 }
 
+// ── HTML ESCAPE (prevents XSS when inserting user content into innerHTML) ──
+function esc(str) {
+  return String(str ?? '')
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
 // ── MODAL HELPERS ──
 const blogModal  = document.getElementById('blog-modal');
 const writeModal = document.getElementById('write-modal');
@@ -61,6 +71,7 @@ const cfMessage = document.getElementById('cf-message');
 const cfStatus  = document.getElementById('cf-status');
 const cfBtn     = document.getElementById('cf-submit');
 
+let cfLastSent = 0;
 cfBtn.addEventListener('click', async () => {
   const name    = cfName.value.trim();
   const email   = cfEmail.value.trim();
@@ -69,6 +80,12 @@ cfBtn.addEventListener('click', async () => {
 
   if (!name || !email || !message) {
     showStatus(cfStatus, '⚠ Please fill in your name, email and message.', C.warn);
+    return;
+  }
+
+  const now = Date.now();
+  if (now - cfLastSent < 30000) {
+    showStatus(cfStatus, '⚠ Please wait 30 seconds before sending again.', C.warn);
     return;
   }
 
@@ -83,6 +100,7 @@ cfBtn.addEventListener('click', async () => {
       subject:    subject || 'Portfolio Contact',
       message:    message,
     });
+    cfLastSent = Date.now();
     showStatus(cfStatus, '✓ Message sent! I\'ll get back to you soon.', C.ok);
     cfName.value = cfEmail.value = cfSubject.value = cfMessage.value = '';
   } catch {
@@ -159,19 +177,19 @@ function renderPosts(posts) {
     return;
   }
   container.innerHTML = posts.map(p => `
-    <div class="blog-card" onclick="openPost('${p.id}')">
+    <div class="blog-card" onclick="openPost('${esc(p.id)}')">
       <div class="blog-card-img">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#333;letter-spacing:0.1em">${p.tag || 'Blog'}</span>
+        <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#333;letter-spacing:0.1em">${esc(p.tag) || 'Blog'}</span>
       </div>
       <div class="blog-card-body">
-        <div class="blog-tag">${p.tag || 'Post'}</div>
-        <h3>${p.title}</h3>
-        <p>${p.content.slice(0, 100)}${p.content.length > 100 ? '...' : ''}</p>
-        <div class="blog-date">${p.date}</div>
+        <div class="blog-tag">${esc(p.tag) || 'Post'}</div>
+        <h3>${esc(p.title)}</h3>
+        <p>${esc(p.content.slice(0, 100))}${p.content.length > 100 ? '...' : ''}</p>
+        <div class="blog-date">${esc(p.date)}</div>
         ${isAdmin ? `
         <div class="blog-card-actions">
-          <button class="blog-action-btn" onclick="editPost('${p.id}', event)">Edit</button>
-          <button class="blog-action-btn delete" onclick="deletePost('${p.id}', event)">Delete</button>
+          <button class="blog-action-btn" onclick="editPost('${esc(p.id)}', event)">Edit</button>
+          <button class="blog-action-btn delete" onclick="deletePost('${esc(p.id)}', event)">Delete</button>
         </div>` : ''}
       </div>
     </div>
