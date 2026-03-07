@@ -362,11 +362,6 @@ window.addEventListener('firebase-ready', async () => {
   }
 });
 
-// ── INITIAL RENDER (localStorage, shown immediately before Firebase resolves) ──
+// ── INITIAL RENDER (shown immediately before Firebase resolves) ──
 allPosts = ls.getAll();
-// In localStorage mode, admin is always on (local device only)
-if (!firebaseReady) {
-  isAdmin = true;
-  updateAdminUI();
-}
 renderPosts(allPosts);
