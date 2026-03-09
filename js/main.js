@@ -166,7 +166,7 @@ function openPost(id) {
   document.getElementById('modal-date').textContent    = p.date;
   document.getElementById('modal-content').textContent = p.content;
 
-  const url  = 'https://nwodor.github.io/portfolio/';
+  const url  = 'https://nwodor.github.io/portfolio/#skills';
   const text = encodeURIComponent(`"${p.title}" — read on Success's portfolio`);
   const enc  = encodeURIComponent(url);
 
