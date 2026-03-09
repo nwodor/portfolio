@@ -386,6 +386,23 @@ section {
 }
 .modal-close:hover { color: var(--lime); }
 
+/* ── SHARE BAR ── */
+.share-bar {
+  display: flex; align-items: center; gap: 0.6rem;
+  margin-top: 2rem; padding-top: 1.5rem; border-top: 1px solid #1a1a1a; flex-wrap: wrap;
+}
+.share-label {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.65rem;
+  color: #444; letter-spacing: 0.15em; text-transform: uppercase; margin-right: 0.25rem;
+}
+.share-btn {
+  font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; font-weight: 600;
+  background: #1a1a1a; border: 1px solid #2a2a2a; color: #888;
+  padding: 0.35rem 0.75rem; border-radius: 6px; cursor: pointer;
+  text-decoration: none; transition: border-color 0.2s, color 0.2s;
+}
+.share-btn:hover { border-color: var(--lime); color: var(--lime); }
+
 /* ── FOOTER ── */
 footer {
   margin-right: 64px; background: #0d0d0d;

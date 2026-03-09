@@ -165,6 +165,23 @@ function openPost(id) {
   document.getElementById('modal-title').textContent   = p.title;
   document.getElementById('modal-date').textContent    = p.date;
   document.getElementById('modal-content').textContent = p.content;
+
+  const url  = 'https://nwodor.github.io/portfolio/';
+  const text = encodeURIComponent(`"${p.title}" — read on Success's portfolio`);
+  const enc  = encodeURIComponent(url);
+
+  document.getElementById('share-x').href        = `https://twitter.com/intent/tweet?text=${text}&url=${enc}`;
+  document.getElementById('share-linkedin').href  = `https://www.linkedin.com/sharing/share-offsite/?url=${enc}`;
+  document.getElementById('share-whatsapp').href  = `https://wa.me/?text=${text}%20${enc}`;
+
+  const copyBtn = document.getElementById('share-copy');
+  copyBtn.onclick = () => {
+    navigator.clipboard.writeText(url).then(() => {
+      copyBtn.textContent = 'Copied!';
+      setTimeout(() => { copyBtn.textContent = 'Copy Link'; }, 2000);
+    });
+  };
+
   blogModal.classList.add('open');
 }
 window.openPost = openPost;
