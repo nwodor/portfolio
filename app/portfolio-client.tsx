@@ -30,6 +30,7 @@ import {
   LogOut,
   Menu,
   Send,
+  Sparkles,
   X,
 } from "lucide-react";
 import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
@@ -422,6 +423,10 @@ export default function PortfolioClient() {
     message: "",
   });
   const [adminDraft, setAdminDraft] = useState({ email: "", password: "" });
+  const [aiQuestion, setAiQuestion] = useState("");
+  const [aiAnswer, setAiAnswer] = useState("");
+  const [aiError, setAiError] = useState("");
+  const [aiLoading, setAiLoading] = useState(false);
 
   const db = useMemo(() => {
     try {
@@ -644,6 +649,42 @@ export default function PortfolioClient() {
     }
   };
 
+  const handleAskAi = async (event: FormEvent) => {
+    event.preventDefault();
+    const question = aiQuestion.trim();
+    if (!question || aiLoading) return;
+
+    setAiLoading(true);
+    setAiError("");
+    setAiAnswer("");
+
+    const isLocal =
+      typeof window !== "undefined" &&
+      (window.location.hostname === "localhost" ||
+        window.location.hostname === "127.0.0.1");
+    const endpoint = isLocal
+      ? "http://localhost:9999/ask-ai"
+      : "/.netlify/functions/ask-ai";
+
+    try {
+      const res = await fetch(endpoint, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ question }),
+      });
+      const data = (await res.json()) as { answer?: string; error?: string };
+      if (!res.ok || !data.answer) {
+        setAiError(data.error || "Something went wrong. Try again.");
+      } else {
+        setAiAnswer(data.answer);
+      }
+    } catch {
+      setAiError("Network error. Check your connection and try again.");
+    } finally {
+      setAiLoading(false);
+    }
+  };
+
   const handleContactSubmit = async (event: FormEvent) => {
     event.preventDefault();
     const { name, email, subject, message } = contactDraft;
@@ -758,6 +799,48 @@ export default function PortfolioClient() {
                   Let&apos;s Talk <Send size={15} />
                 </a>
               </div>
+
+              <form className="ask-ai" onSubmit={handleAskAi}>
+                <label className="ask-ai-label" htmlFor="ask-ai-input">
+                  <Sparkles size={12} /> What would you like to know?
+                </label>
+                <div className="ask-ai-row">
+                  <input
+                    id="ask-ai-input"
+                    type="text"
+                    className="ask-ai-input"
+                    placeholder="e.g. What's Success's tech stack?"
+                    value={aiQuestion}
+                    onChange={(event) => setAiQuestion(event.target.value)}
+                    maxLength={300}
+                    disabled={aiLoading}
+                    autoComplete="off"
+                  />
+                  <button
+                    type="submit"
+                    className="ask-ai-btn"
+                    disabled={aiLoading || !aiQuestion.trim()}
+                    aria-label="Ask AI"
+                  >
+                    {aiLoading ? (
+                      <span className="ask-ai-spinner" aria-hidden="true" />
+                    ) : (
+                      <Send size={14} />
+                    )}
+                  </button>
+                </div>
+                {aiAnswer ? (
+                  <motion.div
+                    className="ask-ai-answer"
+                    initial={{ opacity: 0, y: 6 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    transition={{ duration: 0.25 }}
+                  >
+                    {aiAnswer}
+                  </motion.div>
+                ) : null}
+                {aiError ? <div className="ask-ai-error">{aiError}</div> : null}
+              </form>
             </Reveal>
 
             <Reveal className="photo-wrap" delay={0.12}>
