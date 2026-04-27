@@ -2,7 +2,7 @@
 
 > IT administrator. Software developer. Data analyst. Edmonton-based. I build things that ship.
 
-This README is the long-form version of [my portfolio](https://nwodor.github.io/portfolio/). It's also the context file for the **Ask AI** widget on the home page. Anything here is fair game for the chatbot to use when answering questions about me.
+ 
 
 ---
 
