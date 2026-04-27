@@ -5,8 +5,12 @@ import { fileURLToPath } from "node:url";
 const MODEL = "claude-haiku-4-5-20251001";
 const MAX_QUESTION_CHARS = 300;
 const MAX_OUTPUT_TOKENS = 500;
+const RATE_LIMIT_WINDOW_MS = 60 * 1000;
+const RATE_LIMIT_MAX_REQUESTS = 5;
 
 const BIO = loadBio();
+const rateLimitBuckets = globalThis.__askAiRateLimitBuckets ?? new Map();
+globalThis.__askAiRateLimitBuckets = rateLimitBuckets;
 
 function loadBio() {
   const here = dirname(fileURLToPath(import.meta.url));
@@ -45,16 +49,85 @@ ${bio}
 
 const SYSTEM_PROMPT = buildSystemPrompt(BIO);
 
-function jsonResponse(status, body) {
+function jsonResponse(status, body, headers = {}) {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { "content-type": "application/json" },
+    headers: { "content-type": "application/json", ...headers },
   });
+}
+
+function getClientId(request) {
+  const forwardedFor = request.headers.get("x-forwarded-for");
+  if (forwardedFor) return forwardedFor.split(",")[0].trim();
+
+  return (
+    request.headers.get("x-nf-client-connection-ip") ||
+    request.headers.get("client-ip") ||
+    "unknown"
+  );
+}
+
+function checkRateLimit(request) {
+  const now = Date.now();
+  const windowStart = now - RATE_LIMIT_WINDOW_MS;
+  const clientId = getClientId(request);
+  const recentRequests = (rateLimitBuckets.get(clientId) ?? []).filter(
+    (timestamp) => timestamp > windowStart,
+  );
+
+  if (recentRequests.length >= RATE_LIMIT_MAX_REQUESTS) {
+    const retryAfterSeconds = Math.max(
+      1,
+      Math.ceil((recentRequests[0] + RATE_LIMIT_WINDOW_MS - now) / 1000),
+    );
+    rateLimitBuckets.set(clientId, recentRequests);
+    cleanupRateLimitBuckets(windowStart);
+    return {
+      allowed: false,
+      retryAfterSeconds,
+      remaining: 0,
+    };
+  }
+
+  recentRequests.push(now);
+  rateLimitBuckets.set(clientId, recentRequests);
+  cleanupRateLimitBuckets(windowStart);
+  return {
+    allowed: true,
+    retryAfterSeconds: 0,
+    remaining: RATE_LIMIT_MAX_REQUESTS - recentRequests.length,
+  };
+}
+
+function cleanupRateLimitBuckets(windowStart) {
+  for (const [clientId, timestamps] of rateLimitBuckets.entries()) {
+    const recentRequests = timestamps.filter((timestamp) => timestamp > windowStart);
+    if (recentRequests.length) {
+      rateLimitBuckets.set(clientId, recentRequests);
+    } else {
+      rateLimitBuckets.delete(clientId);
+    }
+  }
 }
 
 export default async function handler(request) {
   if (request.method !== "POST") {
     return jsonResponse(405, { error: "Method not allowed" });
+  }
+
+  const rateLimit = checkRateLimit(request);
+  if (!rateLimit.allowed) {
+    return jsonResponse(
+      429,
+      {
+        error: `Too many AI requests. Please wait ${rateLimit.retryAfterSeconds} seconds and try again.`,
+      },
+      {
+        "retry-after": String(rateLimit.retryAfterSeconds),
+        "x-ratelimit-limit": String(RATE_LIMIT_MAX_REQUESTS),
+        "x-ratelimit-remaining": String(rateLimit.remaining),
+      },
+    );
   }
 
   const apiKey = process.env.ANTHROPIC_API_KEY;
