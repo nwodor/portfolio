@@ -79,6 +79,7 @@ type Post = {
   title: string;
   tag: string;
   content: string;
+  imageUrl?: string;
   date: string;
 };
 
@@ -86,6 +87,7 @@ type PostDraft = {
   title: string;
   tag: string;
   content: string;
+  imageUrl: string;
 };
 
 type ContactDraft = {
@@ -124,6 +126,7 @@ const EMAILJS_TEMPLATE_ID =
   process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ?? "template_q2bustc";
 
 const LS_KEY = "portfolio_blog_posts";
+const DEFAULT_POST_IMAGE = "/img/article-workspace.jpg";
 
 const services = [
   {
@@ -235,6 +238,14 @@ function getLocalPosts(): Post[] {
 
 function saveLocalPosts(posts: Post[]) {
   localStorage.setItem(LS_KEY, JSON.stringify(posts));
+}
+
+function isValidImageSrc(src: string) {
+  return !src || src.startsWith("/") || src.startsWith("https://") || src.startsWith("http://");
+}
+
+function getPostImageSrc(post: Post) {
+  return post.imageUrl?.trim() || DEFAULT_POST_IMAGE;
 }
 
 function Reveal({
@@ -410,7 +421,12 @@ export default function PortfolioClient() {
   const [firebaseReady, setFirebaseReady] = useState(false);
   const [auth, setAuth] = useState<Auth | null>(null);
   const [editingId, setEditingId] = useState<string | null>(null);
-  const [postDraft, setPostDraft] = useState<PostDraft>({ title: "", tag: "", content: "" });
+  const [postDraft, setPostDraft] = useState<PostDraft>({
+    title: "",
+    tag: "",
+    content: "",
+    imageUrl: "",
+  });
   const [postStatus, setPostStatus] = useState("");
   const [adminStatus, setAdminStatus] = useState("");
   const [contactStatus, setContactStatus] = useState("");
@@ -479,6 +495,7 @@ export default function PortfolioClient() {
             title?: string;
             tag?: string;
             content?: string;
+            imageUrl?: string;
             createdAt?: { toDate?: () => Date };
           };
 
@@ -487,6 +504,7 @@ export default function PortfolioClient() {
             title: data.title ?? "",
             tag: data.tag ?? "Post",
             content: data.content ?? "",
+            imageUrl: data.imageUrl ?? "",
             date:
               data.createdAt?.toDate?.().toLocaleDateString("en-CA", {
                 year: "numeric",
@@ -510,7 +528,7 @@ export default function PortfolioClient() {
 
   const resetPostDraft = () => {
     setEditingId(null);
-    setPostDraft({ title: "", tag: "", content: "" });
+    setPostDraft({ title: "", tag: "", content: "", imageUrl: "" });
     setPostStatus("");
   };
 
@@ -524,6 +542,7 @@ export default function PortfolioClient() {
           title?: string;
           tag?: string;
           content?: string;
+          imageUrl?: string;
           createdAt?: { toDate?: () => Date };
         };
 
@@ -532,6 +551,7 @@ export default function PortfolioClient() {
           title: data.title ?? "",
           tag: data.tag ?? "Post",
           content: data.content ?? "",
+          imageUrl: data.imageUrl ?? "",
           date:
             data.createdAt?.toDate?.().toLocaleDateString("en-CA", {
               year: "numeric",
@@ -548,9 +568,15 @@ export default function PortfolioClient() {
     const title = postDraft.title.trim();
     const tag = postDraft.tag.trim();
     const content = postDraft.content.trim();
+    const imageUrl = postDraft.imageUrl.trim();
 
     if (!title || !content) {
       setPostStatus("Title and content are required.");
+      return;
+    }
+
+    if (!isValidImageSrc(imageUrl)) {
+      setPostStatus("Use a full image URL or a local path starting with /.");
       return;
     }
 
@@ -558,7 +584,7 @@ export default function PortfolioClient() {
       if (firebaseReady && db) {
         if (editingId) {
           setPostStatus("Updating...");
-          await updateDoc(doc(db, "posts", editingId), { title, tag, content });
+          await updateDoc(doc(db, "posts", editingId), { title, tag, content, imageUrl });
           setPostStatus("Post updated.");
         } else {
           setPostStatus("Publishing...");
@@ -566,6 +592,7 @@ export default function PortfolioClient() {
             title,
             tag,
             content,
+            imageUrl,
             createdAt: serverTimestamp(),
           });
           setPostStatus("Post published.");
@@ -575,7 +602,7 @@ export default function PortfolioClient() {
         let nextPosts: Post[];
         if (editingId) {
           nextPosts = posts.map((post) =>
-            post.id === editingId ? { ...post, title, tag, content } : post,
+            post.id === editingId ? { ...post, title, tag, content, imageUrl } : post,
           );
           setPostStatus("Post updated locally.");
         } else {
@@ -585,6 +612,7 @@ export default function PortfolioClient() {
               title,
               tag,
               content,
+              imageUrl,
               date: new Date().toLocaleDateString("en-CA", {
                 year: "numeric",
                 month: "short",
@@ -1113,7 +1141,14 @@ export default function PortfolioClient() {
                     transition={{ type: "spring", stiffness: 240, damping: 22 }}
                     onClick={() => setSelectedPost(post)}
                   >
-                    <div className="blog-card-img">
+                    <div className="blog-card-img has-image">
+                      <Image
+                        src={getPostImageSrc(post)}
+                        alt={post.title}
+                        fill
+                        sizes="(max-width: 900px) 100vw, 33vw"
+                        className="blog-card-photo"
+                      />
                       <span>{post.tag || "Blog"}</span>
                     </div>
                     <div className="blog-card-body">
@@ -1135,6 +1170,7 @@ export default function PortfolioClient() {
                                 title: post.title,
                                 tag: post.tag,
                                 content: post.content,
+                                imageUrl: post.imageUrl ?? "",
                               });
                               setWriteOpen(true);
                             }}
@@ -1282,6 +1318,15 @@ export default function PortfolioClient() {
               <p className="modal-date">{selectedPost.date}</p>
             </div>
             <div className="modal-body">
+              <div className="modal-post-image">
+                <Image
+                  src={getPostImageSrc(selectedPost)}
+                  alt={selectedPost.title}
+                  fill
+                  sizes="(max-width: 720px) 100vw, 680px"
+                  className="modal-post-photo"
+                />
+              </div>
               <p className="modal-content">{selectedPost.content}</p>
               <div className="share-bar">
                 <span className="share-label">Share</span>
@@ -1364,6 +1409,18 @@ export default function PortfolioClient() {
               value={postDraft.tag}
               onChange={(event) =>
                 setPostDraft((draft) => ({ ...draft, tag: event.target.value }))
+              }
+            />
+          </div>
+          <div className="form-group">
+            <label htmlFor="post-image">Image URL</label>
+            <input
+              type="text"
+              id="post-image"
+              placeholder="Leave blank to use /img/article-workspace.jpg"
+              value={postDraft.imageUrl}
+              onChange={(event) =>
+                setPostDraft((draft) => ({ ...draft, imageUrl: event.target.value }))
               }
             />
           </div>
