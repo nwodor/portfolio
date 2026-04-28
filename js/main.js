@@ -39,6 +39,7 @@ document.getElementById('open-write-btn').addEventListener('click', () => {
   currentEditId = null;
   document.getElementById('post-title').value   = '';
   document.getElementById('post-tag').value     = '';
+  document.getElementById('post-image').value   = '';
   document.getElementById('post-content').value = '';
   document.querySelector('#write-modal .modal-header h2').textContent = 'Write New Post';
   document.getElementById('publish-btn').textContent = 'Publish Post →';
@@ -121,6 +122,16 @@ let fbMod         = null;
 
 // ── LOCAL STORAGE (default when Firebase isn't configured) ──
 const LS_KEY = 'portfolio_blog_posts';
+const DEFAULT_POST_IMAGE = 'img/article-workspace.jpg';
+
+function isValidImageSrc(src) {
+  return !src || src.startsWith('/') || src.startsWith('http://') || src.startsWith('https://') || src.startsWith('img/');
+}
+
+function getPostImageSrc(post) {
+  return String(post?.imageUrl || '').trim() || DEFAULT_POST_IMAGE;
+}
+
 const ls = {
   getAll() {
     try { return JSON.parse(localStorage.getItem(LS_KEY) || '[]'); }
@@ -164,6 +175,9 @@ function openPost(id) {
   document.getElementById('modal-tag').textContent     = p.tag || 'Post';
   document.getElementById('modal-title').textContent   = p.title;
   document.getElementById('modal-date').textContent    = p.date;
+  const modalImage = document.getElementById('modal-image');
+  modalImage.src = getPostImageSrc(p);
+  modalImage.alt = p.title || 'Article image';
   document.getElementById('modal-content').textContent = p.content;
 
   const url  = 'https://nwodor.github.io/portfolio/#skills';
@@ -195,8 +209,9 @@ function renderPosts(posts) {
   }
   container.innerHTML = posts.map(p => `
     <div class="blog-card" onclick="openPost('${esc(p.id)}')">
-      <div class="blog-card-img">
-        <span style="font-family:'JetBrains Mono',monospace;font-size:0.65rem;color:#333;letter-spacing:0.1em">${esc(p.tag) || 'Blog'}</span>
+      <div class="blog-card-img has-image">
+        <img src="${esc(getPostImageSrc(p))}" alt="${esc(p.title || 'Article image')}" loading="lazy" />
+        <span>${esc(p.tag) || 'Blog'}</span>
       </div>
       <div class="blog-card-body">
         <div class="blog-tag">${esc(p.tag) || 'Post'}</div>
@@ -221,6 +236,7 @@ window.editPost = function(id, event) {
   currentEditId = id;
   document.getElementById('post-title').value   = p.title;
   document.getElementById('post-tag').value     = p.tag || '';
+  document.getElementById('post-image').value   = p.imageUrl || '';
   document.getElementById('post-content').value = p.content;
   document.querySelector('#write-modal .modal-header h2').textContent = 'Edit Post';
   document.getElementById('publish-btn').textContent = 'Update Post →';
@@ -252,8 +268,14 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
   if (!isAdmin && firebaseReady) return; // safety guard
   const title   = document.getElementById('post-title').value.trim();
   const tag     = document.getElementById('post-tag').value.trim();
+  const imageUrl = document.getElementById('post-image').value.trim();
   const content = document.getElementById('post-content').value.trim();
   const status  = document.getElementById('publish-status');
+
+  if (!isValidImageSrc(imageUrl)) {
+    showStatus(status, 'Use a full image URL or a local img/ path.', C.warn);
+    return;
+  }
 
   if (!title || !content) {
     showStatus(status, '⚠ Title and content are required.', C.warn);
@@ -264,12 +286,12 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
     if (firebaseReady) {
       if (currentEditId) {
         showStatus(status, 'Updating...', C.ok);
-        await fbMod.updateDoc(fbMod.doc(fbDb, 'posts', currentEditId), { title, tag, content });
+        await fbMod.updateDoc(fbMod.doc(fbDb, 'posts', currentEditId), { title, tag, imageUrl, content });
         showStatus(status, '✓ Post updated!', C.ok);
       } else {
         showStatus(status, 'Publishing...', C.ok);
         await fbMod.addDoc(fbMod.collection(fbDb, 'posts'), {
-          title, tag, content, createdAt: fbMod.serverTimestamp(),
+          title, tag, imageUrl, content, createdAt: fbMod.serverTimestamp(),
         });
         showStatus(status, '✓ Post published!', C.ok);
       }
@@ -284,11 +306,11 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
     } else {
       if (currentEditId) {
         showStatus(status, 'Saving...', C.ok);
-        allPosts = ls.update(currentEditId, { title, tag, content });
+        allPosts = ls.update(currentEditId, { title, tag, imageUrl, content });
         showStatus(status, '✓ Post updated!', C.ok);
       } else {
         showStatus(status, 'Saving...', C.ok);
-        allPosts = ls.add({ title, tag, content });
+        allPosts = ls.add({ title, tag, imageUrl, content });
         showStatus(status, '✓ Post published!', C.ok);
       }
       renderPosts(allPosts);
@@ -296,6 +318,7 @@ document.getElementById('publish-btn').addEventListener('click', async () => {
 
     document.getElementById('post-title').value   = '';
     document.getElementById('post-tag').value     = '';
+    document.getElementById('post-image').value   = '';
     document.getElementById('post-content').value = '';
     currentEditId = null;
     document.querySelector('#write-modal .modal-header h2').textContent = 'Write New Post';
