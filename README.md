@@ -99,7 +99,7 @@ Personal finance web app with a clean dashboard for tracking income, expenses, a
 The site you're reading from.
 
 - **Stack:** Next.js (App Router), TypeScript, Framer Motion, Firebase Firestore for the blog, Firebase Auth for admin, EmailJS for the contact form, Anthropic Claude for the Ask AI widget
-- **Hosted:** Netlify, mirrored to GitHub Pages at nwodor.github.io/portfolio
+- **Hosted:** Railway at portfolio-production-6f53.up.railway.app, with a legacy GitHub Pages mirror at nwodor.github.io/portfolio
 
 ---
 
