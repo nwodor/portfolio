@@ -99,7 +99,15 @@ Personal finance web app with a clean dashboard for tracking income, expenses, a
 The site you're reading from.
 
 - **Stack:** Next.js (App Router), TypeScript, Framer Motion, Firebase Firestore for the blog, Firebase Auth for admin, EmailJS for the contact form, Anthropic Claude for the Ask AI widget
-- **Hosted:** Railway at portfolio-production-6f53.up.railway.app, with a legacy GitHub Pages mirror at nwodor.github.io/portfolio
+- **Hosted:** Railway at nwodor.xyz
+
+I moved this portfolio to Railway because I want it to run like a real app, not just a static page. Railway is a better fit for where I'm taking it next:
+
+- It runs the full Next.js setup, including server routes like Ask AI.
+- It gives me room to add backend features, APIs, contact workflows, auth, or databases without fighting the platform.
+- It keeps nwodor.xyz connected directly to the production service I'm actually shipping from.
+- It gives me clearer deployment logs, health checks, and debugging when something breaks.
+- It leaves room for the portfolio to grow into something more interactive, closer to a product than a simple landing page.
 
 ---
 
@@ -161,7 +169,7 @@ I'm also actively job hunting in the Canadian tech market — AI engineering, fu
 - **Email:** successofficiall@gmail.com
 - **Location:** Edmonton, AB, Canada
 - **GitHub:** github.com/nwodor
-- **Portfolio:** nwodor.github.io/portfolio
+- **Portfolio:** nwodor.xyz
 
 ---
 
