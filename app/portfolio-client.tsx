@@ -684,16 +684,8 @@ export default function PortfolioClient() {
     setAiError("");
     setAiAnswer("");
 
-    const isLocal =
-      typeof window !== "undefined" &&
-      (window.location.hostname === "localhost" ||
-        window.location.hostname === "127.0.0.1");
-    const endpoint = isLocal
-      ? "http://localhost:9999/ask-ai"
-      : "/.netlify/functions/ask-ai";
-
     try {
-      const res = await fetch(endpoint, {
+      const res = await fetch("/api/ask-ai", {
         method: "POST",
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ question }),
