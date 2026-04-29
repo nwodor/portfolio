@@ -67,10 +67,9 @@ import {
   SiMysql,
   SiN8N,
   SiNextdotjs,
-  SiOllama,
   SiOpenai,
-  SiPerplexity,
   SiPostman,
+  SiRailway,
   SiTypescript,
 } from "react-icons/si";
 
@@ -181,8 +180,7 @@ const techStack: Array<{ name: string; Icon: IconType; featured?: boolean }> = [
   { name: "OpenAI", Icon: SiOpenai },
   { name: "Claude", Icon: SiClaude },
   { name: "n8n", Icon: SiN8N },
-  { name: "Ollama", Icon: SiOllama },
-  { name: "Perplexity", Icon: SiPerplexity },
+  { name: "Railway", Icon: SiRailway },
   { name: "GitHub Copilot", Icon: SiGithubcopilot },
   { name: "HTML5", Icon: FaHtml5 },
   { name: "CSS3", Icon: FaCss3Alt },
