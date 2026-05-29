@@ -802,10 +802,10 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
                 {hero.activeIndex === 4 ? <span className="type-caret" aria-hidden="true" /> : null}
               </p>
               <div className={`button-row hero-reveal ${hero.done ? "show" : ""}`}>
-                <a href="#portfolio" className="btn-lime">
+                <a href="/work" className="btn-lime">
                   View My Work <ArrowDown size={16} />
                 </a>
-                <a href="#contact" className="btn-outline">
+                <a href="/contact" className="btn-outline">
                   Let&apos;s Talk <Send size={15} />
                 </a>
               </div>

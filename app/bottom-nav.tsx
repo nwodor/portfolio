@@ -19,6 +19,16 @@ const LiquidGlass = dynamic(() => import("liquid-glass-react"), { ssr: false });
 
 type NavEntry = { id: string; label: string; Icon: IconType };
 
+const SECTION_HREFS: Record<string, string> = {
+  home: "/",
+  about: "/about",
+  services: "/services",
+  experience: "/experience",
+  portfolio: "/work",
+  skills: "/blog",
+  contact: "/contact",
+};
+
 const NAV: NavEntry[] = [
   { id: "home", label: "Home", Icon: FaHome },
   { id: "about", label: "About", Icon: FaUser },
@@ -30,8 +40,6 @@ const NAV: NavEntry[] = [
 ];
 
 export default function BottomNav({ active }: { active: string }) {
-  const getHref = (id: string) => (id === "skills" ? "/blog" : `/#${id}`);
-
   // The glass overlay/refraction layers only re-measure on a window "resize".
   // When the active item expands its label the pill changes width, so we nudge
   // a resize across the ~0.35s expand transition to keep the glass edges synced.
@@ -67,7 +75,7 @@ export default function BottomNav({ active }: { active: string }) {
             return (
               <a
                 key={id}
-                href={getHref(id)}
+                href={SECTION_HREFS[id]}
                 className={`bn-item ${isActive ? "active" : ""}`}
                 aria-label={label}
                 aria-current={isActive ? "page" : undefined}
