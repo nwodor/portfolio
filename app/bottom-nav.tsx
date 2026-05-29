@@ -30,6 +30,8 @@ const NAV: NavEntry[] = [
 ];
 
 export default function BottomNav({ active }: { active: string }) {
+  const getHref = (id: string) => (id === "skills" ? "/blog" : `/#${id}`);
+
   // The glass overlay/refraction layers only re-measure on a window "resize".
   // When the active item expands its label the pill changes width, so we nudge
   // a resize across the ~0.35s expand transition to keep the glass edges synced.
@@ -65,7 +67,7 @@ export default function BottomNav({ active }: { active: string }) {
             return (
               <a
                 key={id}
-                href={`#${id}`}
+                href={getHref(id)}
                 className={`bn-item ${isActive ? "active" : ""}`}
                 aria-label={label}
                 aria-current={isActive ? "page" : undefined}

@@ -106,6 +106,8 @@ const navItems = [
   ["contact", "Contact"],
 ] as const;
 
+type SectionId = (typeof navItems)[number][0];
+
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "AIzaSyAR763_rkNDoRUWSa5krBgbYY6MQ0bp1Jg",
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "portfolio-433e3.firebaseapp.com",
@@ -418,8 +420,12 @@ function Modal({
   );
 }
 
-export default function PortfolioClient() {
-  const [activeSection, setActiveSection] = useState("home");
+type PortfolioClientProps = {
+  initialSection?: SectionId;
+};
+
+export default function PortfolioClient({ initialSection = "home" }: PortfolioClientProps) {
+  const [activeSection, setActiveSection] = useState(initialSection);
   const hero = useTypewriter(HERO_SEGMENTS, { speed: 22, startDelay: 350, linePause: 240 });
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
@@ -463,7 +469,7 @@ export default function PortfolioClient() {
 
   useEffect(() => {
     const handleScroll = () => {
-      let current = "home";
+      let current: SectionId = "home";
       navItems.forEach(([id]) => {
         const section = document.getElementById(id);
         if (section && window.scrollY >= section.offsetTop - 220) {
@@ -477,6 +483,14 @@ export default function PortfolioClient() {
     window.addEventListener("scroll", handleScroll, { passive: true });
     return () => window.removeEventListener("scroll", handleScroll);
   }, []);
+
+  useEffect(() => {
+    if (initialSection === "home") return;
+
+    requestAnimationFrame(() => {
+      document.getElementById(initialSection)?.scrollIntoView({ block: "start" });
+    });
+  }, [initialSection]);
 
   useEffect(() => {
     const localPosts = getLocalPosts();
@@ -754,7 +768,7 @@ export default function PortfolioClient() {
     }
   };
 
-  const shareUrl = "https://nwodor.github.io/portfolio/#skills";
+  const shareUrl = "https://nwodor.xyz/blog";
   const selectedPostShareText = selectedPost
     ? encodeURIComponent(`Read "${selectedPost.title}" on Success's portfolio`)
     : "";

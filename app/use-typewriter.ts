@@ -37,13 +37,17 @@ export function useTypewriter(
       typeof window !== "undefined" &&
       window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
     if (reduce) {
-      setCounts(segments.map((segment) => segment.length));
-      setDone(true);
+      queueMicrotask(() => {
+        setCounts(segments.map((segment) => segment.length));
+        setDone(true);
+      });
       return;
     }
 
-    setCounts(segments.map(() => 0));
-    setDone(false);
+    queueMicrotask(() => {
+      setCounts(segments.map(() => 0));
+      setDone(false);
+    });
 
     let segment = 0;
     let char = 0;
