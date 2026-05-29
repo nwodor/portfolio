@@ -64,77 +64,73 @@ textarea {
   border-radius: 2px;
 }
 
-#sidenav {
+/* ---- Floating liquid-glass bottom nav ---- */
+/* A zero-size fixed anchor; liquid-glass-react centres the pill on this point. */
+.bottom-nav-anchor {
   position: fixed;
-  right: 0;
-  top: 0;
-  z-index: 100;
-  display: flex;
-  width: 64px;
-  height: 100vh;
-  flex-direction: column;
-  align-items: center;
-  justify-content: center;
-  gap: 2rem;
-  border-left: 1px solid var(--border);
-  background: rgba(17, 17, 17, 0.88);
-  backdrop-filter: blur(18px);
+  left: 50%;
+  bottom: 2.6rem;
+  width: 0;
+  height: 0;
+  z-index: 120;
 }
 
-.nav-icon {
+.bottom-nav-items {
   display: flex;
-  flex-direction: column;
   align-items: center;
-  gap: 6px;
-  padding: 10px;
-  border-radius: 8px;
+  gap: 2px;
+}
+
+.bn-item {
+  display: flex;
+  align-items: center;
+  height: 40px;
+  padding: 0 11px;
+  border-radius: 999px;
+  color: var(--soft);
   text-decoration: none;
+  white-space: nowrap;
   transition:
-    background 160ms var(--ease),
-    transform 160ms var(--ease);
+    color 200ms var(--ease),
+    background 200ms var(--ease);
 }
 
-.nav-icon:hover {
-  background: #1a1a1a;
-  transform: translateX(-2px);
+.bn-item:hover {
+  color: var(--text);
+  background: rgba(255, 255, 255, 0.06);
 }
 
-.nav-icon.active .icon-dot {
-  background: var(--lime);
-  box-shadow: 0 0 18px var(--green-shadow);
-}
-
-.icon-dot {
-  width: 6px;
-  height: 6px;
-  border-radius: 50%;
-  background: var(--muted);
-  transition:
-    background 220ms var(--ease),
-    box-shadow 220ms var(--ease);
-}
-
-.nav-icon span {
-  color: var(--muted);
-  font-family: "JetBrains Mono", monospace;
-  font-size: 9px;
-  letter-spacing: 0.1em;
-  text-transform: uppercase;
-  writing-mode: vertical-rl;
-}
-
-.nav-icon:hover span,
-.nav-icon.active span {
+.bn-item.active {
   color: var(--lime);
+  background: rgba(200, 247, 58, 0.12);
 }
 
-.mobile-nav-toggle,
-.mobile-nav {
-  display: none;
+.bn-icon {
+  flex-shrink: 0;
+  width: 18px;
+  height: 18px;
+  filter: drop-shadow(0 1px 2px rgba(0, 0, 0, 0.45));
 }
 
-main {
-  margin-right: 64px;
+.bn-label {
+  max-width: 0;
+  margin-left: 0;
+  overflow: hidden;
+  opacity: 0;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  transition:
+    max-width 360ms var(--ease),
+    margin-left 360ms var(--ease),
+    opacity 240ms var(--ease);
+}
+
+.bn-item.active .bn-label {
+  max-width: 130px;
+  margin-left: 7px;
+  opacity: 1;
 }
 
 section {
@@ -211,6 +207,8 @@ section {
 
 .hero-name {
   margin-bottom: 0.45rem;
+  /* reserve two lines so the typewriter doesn't shove the page down as it types */
+  min-height: 2em;
   color: #fff;
   font-size: clamp(2.8rem, 5vw, 5rem);
   font-weight: 800;
@@ -227,6 +225,8 @@ section {
 
 .hero-desc {
   max-width: 510px;
+  /* reserve roughly three lines to limit layout shift while typing */
+  min-height: 5.2em;
   margin-bottom: 2.5rem;
   color: #888;
   font-size: 0.96rem;
@@ -242,6 +242,55 @@ section {
 
 .button-row.roomy {
   margin-top: 2rem;
+}
+
+/* Typewriter intro: blinking caret + reveal of the controls once typing ends */
+.type-caret {
+  display: inline-block;
+  width: 0.08em;
+  min-width: 2px;
+  height: 1em;
+  margin-left: 0.06em;
+  vertical-align: -0.12em;
+  background: var(--lime);
+  box-shadow: 0 0 10px var(--green-shadow);
+  animation: caret-blink 0.9s steps(1, end) infinite;
+}
+
+@keyframes caret-blink {
+  0%,
+  49% {
+    opacity: 1;
+  }
+  50%,
+  100% {
+    opacity: 0;
+  }
+}
+
+.hero-reveal {
+  opacity: 0;
+  transform: translateY(10px);
+  transition:
+    opacity 0.5s var(--ease),
+    transform 0.5s var(--ease);
+}
+
+.hero-reveal.show {
+  opacity: 1;
+  transform: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .type-caret {
+    display: none;
+  }
+
+  .hero-reveal {
+    opacity: 1;
+    transform: none;
+    transition: none;
+  }
 }
 
 .btn-lime,
@@ -343,7 +392,7 @@ section {
   height: 100%;
   border-radius: inherit;
   object-fit: cover;
-  object-position: center;
+  object-position: center 90%;
 }
 
 .stats-col {
@@ -565,7 +614,6 @@ section {
 
 .stack-carousel {
   position: relative;
-  margin-right: 64px;
   border-block: 1px solid rgba(255, 255, 255, 0.045);
   background:
     radial-gradient(circle at 15% 50%, rgba(200, 247, 58, 0.06), transparent 28%),
@@ -1271,10 +1319,10 @@ footer {
   align-items: center;
   justify-content: space-between;
   gap: 1rem;
-  margin-right: 64px;
   border-top: 1px solid var(--border);
   background: #0d0d0d;
-  padding: 2rem 5rem;
+  /* extra bottom room so the floating nav never covers footer content */
+  padding: 2rem 5rem 6.5rem;
 }
 
 footer p {
@@ -1366,63 +1414,19 @@ footer p {
 }
 
 @media (max-width: 900px) {
-  #sidenav {
-    display: none;
+  /* tighten the floating nav so all items fit narrow screens */
+  .bn-item {
+    height: 38px;
+    padding: 0 8px;
   }
 
-  .mobile-nav-toggle {
-    position: fixed;
-    top: 1rem;
-    right: 1rem;
-    z-index: 160;
-    display: inline-flex;
-    width: 42px;
-    height: 42px;
-    align-items: center;
-    justify-content: center;
-    border: 1px solid var(--border);
-    border-radius: 6px;
-    background: rgba(17, 17, 17, 0.9);
-    color: var(--lime);
-    cursor: pointer;
-    backdrop-filter: blur(12px);
+  .bn-icon {
+    width: 17px;
+    height: 17px;
   }
 
-  .mobile-nav {
-    position: fixed;
-    top: 4rem;
-    right: 1rem;
-    z-index: 150;
-    display: grid;
-    min-width: 190px;
-    gap: 0.35rem;
-    border: 1px solid var(--border);
-    border-radius: 8px;
-    background: rgba(17, 17, 17, 0.96);
-    padding: 0.7rem;
-    backdrop-filter: blur(16px);
-  }
-
-  .mobile-nav a {
-    border-radius: 4px;
-    color: #aaa;
-    font-family: "JetBrains Mono", monospace;
-    font-size: 0.76rem;
-    letter-spacing: 0.08em;
-    padding: 0.8rem;
-    text-decoration: none;
-    text-transform: uppercase;
-  }
-
-  .mobile-nav a:hover {
-    background: #1a1a1a;
-    color: var(--lime);
-  }
-
-  main,
-  .stack-carousel,
-  footer {
-    margin-right: 0;
+  .bn-item.active .bn-label {
+    max-width: 96px;
   }
 
   section {

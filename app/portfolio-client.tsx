@@ -28,7 +28,6 @@ import {
   ArrowDown,
   ArrowUpRight,
   LogOut,
-  Menu,
   Send,
   Sparkles,
   X,
@@ -50,7 +49,6 @@ import {
   FaMapMarkerAlt,
   FaPenNib,
   FaPhp,
-  FaPhoneAlt,
   FaPlug,
   FaPython,
   FaReact,
@@ -72,6 +70,8 @@ import {
   SiRailway,
   SiTypescript,
 } from "react-icons/si";
+import BottomNav from "./bottom-nav";
+import { useTypewriter } from "./use-typewriter";
 
 type Post = {
   id: string;
@@ -127,44 +127,54 @@ const EMAILJS_TEMPLATE_ID =
 const LS_KEY = "portfolio_blog_posts";
 const DEFAULT_POST_IMAGE = "/img/article-workspace.jpg";
 
+// Hero intro lines, typed out in order on load. Kept module-level so the
+// reference stays stable for the typewriter hook.
+const HERO_GREETING = "Hello, I'm";
+const HERO_NAME_1 = "Nwodor-Joseph";
+const HERO_NAME_2 = "Success";
+const HERO_TITLE = "IT administrator, Software Developer & Data analyst";
+const HERO_DESC =
+  "Third-year IT student at Concordia University of Edmonton, building full-stack web apps that solve real problems. From RESTful APIs to responsive frontends, I ship clean, maintainable code.";
+const HERO_SEGMENTS = [HERO_GREETING, HERO_NAME_1, HERO_NAME_2, HERO_TITLE, HERO_DESC];
+
 const services = [
   {
     num: "01 //",
     title: "Full-Stack Web Apps",
     Icon: FaServer,
-    text: "End-to-end development of web applications from database schema to polished UI using modern frameworks and clean architecture.",
+    text: "Web apps built end to end, from the database schema up to the interface people actually click.",
     tags: ["Python", "Django", "JavaScript", "MySQL"],
   },
   {
     num: "02 //",
     title: "API Development",
     Icon: FaPlug,
-    text: "Designing and implementing RESTful APIs with authentication, validation, and clean documentation for seamless integrations.",
+    text: "REST APIs with real auth, validation, and docs another developer can pick up without guessing.",
     tags: ["REST APIs", "MVC", "JSON", "Git"],
   },
   {
     num: "03 //",
     title: "Data & Database",
     Icon: FaDatabase,
-    text: "Database design, SQL querying, and data integrity management. Turning raw data into actionable insights using Excel and SQL.",
+    text: "Schema design, SQL, and data integrity that turn messy data into something you can actually decide on.",
     tags: ["SQL", "MySQL", "Excel", "Data Analysis"],
   },
 ];
 
 const strengths = [
-  "Clear Communication & Problem-Solving",
+  "Communication & Problem-Solving",
   "Full-Stack Web Development",
   "Database Design & SQL",
-  "RESTful API Integration",
-  "Ethical & Responsible AI Usage",
+  "REST API Design & Integration",
+  "AI-Augmented Development",
   "CRM & Customer Management Systems",
 ];
 
 const aboutCards: Array<{ title: string; text: string; Icon: IconType }> = [
-  { title: "Full-Stack Dev", text: "Python, Django, JS, PHP - end to end.", Icon: FaCode },
-  { title: "Data & SQL", text: "MySQL, Excel - query, integrity, insights.", Icon: FaDatabase },
+  { title: "Full-Stack Dev", text: "Python, Django, JS, PHP, front to back.", Icon: FaCode },
+  { title: "Data & SQL", text: "MySQL and Excel for query, integrity, and insight.", Icon: FaDatabase },
   { title: "API Integration", text: "RESTful APIs, MVC architecture, clean code.", Icon: FaPlug },
-  { title: "AI-Augmented", text: "Using AI tools to ship faster and smarter.", Icon: FaRobot },
+  { title: "AI-Augmented", text: "I use AI to draft and review, not to skip the thinking.", Icon: FaRobot },
 ];
 
 const techStack: Array<{ name: string; Icon: IconType; featured?: boolean }> = [
@@ -191,19 +201,19 @@ const techStack: Array<{ name: string; Icon: IconType; featured?: boolean }> = [
 
 const workExperience = [
   {
-    date: "Jul 2025 - Present",
+    date: "Jul 2025 – Present",
     role: "Customer Experience Coworker Level 3",
-    company: "IKEA - Edmonton, AB",
+    company: "IKEA, Edmonton, AB",
     desc: "Providing excellent customer service, using IKEA software to accurately track inventory, and resolving customer issues efficiently while maintaining stock integrity.",
   },
   {
-    date: "Oct 2024 - Jul 2025",
+    date: "Oct 2024 – Jul 2025",
     role: "Carts Co-worker",
-    company: "IKEA - Edmonton, AB",
+    company: "IKEA, Edmonton, AB",
     desc: "Coordinated with warehouse and pickup teams to ensure merchandise integrity, monitored loading zone operations, and reported equipment issues to management.",
   },
   {
-    date: "Oct 2022 - Nov 2023",
+    date: "Oct 2022 – Nov 2023",
     role: "Software Engineering Intern",
     company: "Lendsqr",
     desc: "Assisted in designing, developing and testing software applications. Wrote clean, maintainable code, used SQL to query databases, and maintained data integrity and confidentiality.",
@@ -214,13 +224,13 @@ const education = [
   {
     date: "Current",
     role: "BSc. Information Technology",
-    company: "Concordia University of Edmonton - Minor in Business",
+    company: "Concordia University of Edmonton, Minor in Business",
     desc: "3rd year IT student focused on software engineering, system design, and business fundamentals.",
   },
   {
     date: "Prior",
     role: "Advanced Diploma in Software Engineering",
-    company: "Aptech Computer Education - Lagos, Nigeria",
+    company: "Aptech Computer Education, Lagos, Nigeria",
     desc: "Foundational and advanced training in software engineering principles, programming, and application development.",
   },
 ];
@@ -410,7 +420,7 @@ function Modal({
 
 export default function PortfolioClient() {
   const [activeSection, setActiveSection] = useState("home");
-  const [mobileNavOpen, setMobileNavOpen] = useState(false);
+  const hero = useTypewriter(HERO_SEGMENTS, { speed: 22, startDelay: 350, linePause: 240 });
   const [posts, setPosts] = useState<Post[]>([]);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [writeOpen, setWriteOpen] = useState(false);
@@ -746,70 +756,38 @@ export default function PortfolioClient() {
 
   const shareUrl = "https://nwodor.github.io/portfolio/#skills";
   const selectedPostShareText = selectedPost
-    ? encodeURIComponent(`"${selectedPost.title}" - read on Success's portfolio`)
+    ? encodeURIComponent(`Read "${selectedPost.title}" on Success's portfolio`)
     : "";
 
   return (
     <>
-      <nav id="sidenav" aria-label="Portfolio sections">
-        {navItems.map(([id, label]) => (
-          <a
-            key={id}
-            className={`nav-icon ${activeSection === id ? "active" : ""}`}
-            href={`#${id}`}
-            onClick={() => setMobileNavOpen(false)}
-          >
-            <div className="icon-dot" />
-            <span>{label}</span>
-          </a>
-        ))}
-      </nav>
-
-      <button
-        className="mobile-nav-toggle"
-        type="button"
-        aria-label="Toggle navigation"
-        onClick={() => setMobileNavOpen((value) => !value)}
-      >
-        {mobileNavOpen ? <X size={18} /> : <Menu size={18} />}
-      </button>
-
-      <AnimatePresence>
-        {mobileNavOpen ? (
-          <motion.nav
-            className="mobile-nav"
-            initial={{ opacity: 0, y: -14 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -14 }}
-            transition={{ duration: 0.22 }}
-          >
-            {navItems.map(([id, label]) => (
-              <a key={id} href={`#${id}`} onClick={() => setMobileNavOpen(false)}>
-                {label}
-              </a>
-            ))}
-          </motion.nav>
-        ) : null}
-      </AnimatePresence>
+      <BottomNav active={activeSection} />
 
       <main>
         <section id="home">
           <div className="hero-orbit" />
           <div className="hero-grid">
             <Reveal>
-              <p className="greeting">{"// Hello, I'm"}</p>
-              <h1 className="hero-name">
-                Nwodor-Joseph
-                <br />
-                Success
-              </h1>
-              <p className="hero-title">IT administrator, Software Developer & Data analyst</p>
-              <p className="hero-desc">
-                Third-year IT student at Concordia University of Edmonton, building full-stack
-                web apps that solve real problems. From RESTful APIs to responsive frontends, I
-                ship clean, maintainable code.
+              <p className="greeting" aria-label={HERO_GREETING}>
+                {hero.rendered[0]}
+                {hero.activeIndex === 0 ? <span className="type-caret" aria-hidden="true" /> : null}
               </p>
-              <div className="button-row">
+              <h1 className="hero-name" aria-label={`${HERO_NAME_1} ${HERO_NAME_2}`}>
+                {hero.rendered[1]}
+                {hero.activeIndex === 1 ? <span className="type-caret" aria-hidden="true" /> : null}
+                {hero.rendered[1] === HERO_NAME_1 ? <br /> : null}
+                {hero.rendered[2]}
+                {hero.activeIndex === 2 ? <span className="type-caret" aria-hidden="true" /> : null}
+              </h1>
+              <p className="hero-title" aria-label={HERO_TITLE}>
+                {hero.rendered[3]}
+                {hero.activeIndex === 3 ? <span className="type-caret" aria-hidden="true" /> : null}
+              </p>
+              <p className="hero-desc" aria-label={HERO_DESC}>
+                {hero.rendered[4]}
+                {hero.activeIndex === 4 ? <span className="type-caret" aria-hidden="true" /> : null}
+              </p>
+              <div className={`button-row hero-reveal ${hero.done ? "show" : ""}`}>
                 <a href="#portfolio" className="btn-lime">
                   View My Work <ArrowDown size={16} />
                 </a>
@@ -818,7 +796,7 @@ export default function PortfolioClient() {
                 </a>
               </div>
 
-              <form className="ask-ai" onSubmit={handleAskAi}>
+              <form className={`ask-ai hero-reveal ${hero.done ? "show" : ""}`} onSubmit={handleAskAi}>
                 <label className="ask-ai-label" htmlFor="ask-ai-input">
                   <Sparkles size={12} /> What would you like to know?
                 </label>
@@ -901,13 +879,13 @@ export default function PortfolioClient() {
             <Reveal>
               <SectionTitle
                 tag="// 01. About Me"
-                title="Professional"
-                accent="Problem Solutions"
+                title="The Short"
+                accent="Version"
               />
               <p className="section-desc spacious">
-                Highly motivated IT student with a strong foundation in software engineering and
-                data analysis. I combine technical depth with a customer-first mindset, building
-                reliable solutions in fast-paced environments.
+                I work as an IT administrator, software developer, and data analyst. The throughline
+                is a ship-it mindset: I care more about getting something useful in front of a real
+                person than about a perfect plan on paper.
               </p>
               <div>
                 {strengths.map((item) => (
@@ -979,7 +957,7 @@ export default function PortfolioClient() {
             <div>
               <SectionTitle tag="// 02. What I Do" title="Core" accent="Services" />
             </div>
-            <p className="section-desc">Reliable, scalable solutions for the web from database to interface.</p>
+            <p className="section-desc">What I build, from the database up to the interface.</p>
           </Reveal>
 
           <div className="services-grid">
@@ -1011,7 +989,7 @@ export default function PortfolioClient() {
 
         <section id="experience">
           <Reveal>
-            <SectionTitle tag="// 03. My Resume" title="Real" accent="Problem Solutions" />
+            <SectionTitle tag="// 03. My Resume" title="Where I've" accent="Worked" />
           </Reveal>
 
           <div className="exp-layout">
@@ -1052,7 +1030,7 @@ export default function PortfolioClient() {
                 title: "Car Rental Website",
                 status: "Live on Render",
                 type: "cars" as const,
-                text: "Full-stack web application allowing users to search and manage car rentals online. Rental companies can list vehicles, manage bookings, and process payments through an admin dashboard.",
+                text: "A full-stack car rental site: customers search and book vehicles, while rental companies list cars, manage bookings, and take payments from an admin dashboard.",
                 tags: ["Python", "Django", "MySQL", "Bootstrap", "REST APIs", "Render"],
               },
               {
@@ -1060,7 +1038,7 @@ export default function PortfolioClient() {
                 status: "In Development",
                 type: "finance" as const,
                 wip: true,
-                text: "A personal finance web app with a clean dashboard for tracking income, expenses, and savings goals. Features real-time charts, transaction history, and budget management tools.",
+                text: "A personal finance app for tracking income, expenses, and savings goals, with live charts, transaction history, and budgets.",
                 tags: ["PHP", "MySQL", "Data Integrity", "Financial Analytics", "In Progress"],
               },
             ].map((project, index) => (
@@ -1188,29 +1166,25 @@ export default function PortfolioClient() {
 
         <section id="contact">
           <Reveal>
-            <SectionTitle tag="// 06. Get In Touch" title="Let's Talk For Your" accent="Next Projects" />
+            <SectionTitle tag="// 06. Get In Touch" title="Let's Work" accent="Together" />
           </Reveal>
 
           <div className="contact-grid">
             <Reveal delay={0.06}>
               <p className="contact-lead">
-                Open to internships, freelance projects, and full-time roles. Let&apos;s build
-                something great together.
+                I&apos;m job hunting in the Canadian tech market: AI engineering, full-stack, and
+                data roles in Edmonton, Calgary, or remote. Also open to freelance work.
               </p>
               <ul className="contact-list">
-                <li className="skill-item">2+ Years of Experience</li>
-                <li className="skill-item">Professional Web Developer</li>
-                <li className="skill-item">Full-Stack & API Integration</li>
-                <li className="skill-item">Data & Database Management</li>
+                <li className="skill-item">2+ years shipping software</li>
+                <li className="skill-item">Full-stack web development</li>
+                <li className="skill-item">REST API design & integration</li>
+                <li className="skill-item">Databases & data analysis</li>
               </ul>
               <div className="contact-info">
                 <a href="mailto:successofficiall@gmail.com" className="contact-info-item">
                   <FaEnvelope className="contact-icon" size={18} />
                   <span>successofficiall@gmail.com</span>
-                </a>
-                <a href="tel:8254198681" className="contact-info-item">
-                  <FaPhoneAlt className="contact-icon" size={18} />
-                  <span>825-419-8681</span>
                 </a>
                 <a
                   href="https://github.com/nwodor"
@@ -1223,7 +1197,7 @@ export default function PortfolioClient() {
                 </a>
                 <div className="contact-info-item">
                   <FaMapMarkerAlt className="contact-icon" size={18} />
-                  <span>Edmonton, AB T5K 1K3</span>
+                  <span>Edmonton, AB, Canada</span>
                 </div>
               </div>
             </Reveal>
@@ -1291,9 +1265,9 @@ export default function PortfolioClient() {
 
       <footer>
         <p>
-          2026 <span className="footer-lime">Nwodor-Joseph Success</span>
+          &copy; 2026 <span className="footer-lime">Nwodor-Joseph Success</span>
         </p>
-        <p>Edmonton, AB - Canada</p>
+        <p>Edmonton, AB, Canada</p>
       </footer>
 
       <Modal isOpen={Boolean(selectedPost)} onClose={() => setSelectedPost(null)}>

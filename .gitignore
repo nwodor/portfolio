@@ -9,3 +9,5 @@ out/
 *.tsbuildinfo
 .claude/
 .vscode/
+.codegraph/
+.cursor/
