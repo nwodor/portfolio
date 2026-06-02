@@ -2,6 +2,7 @@ import type { Metadata } from "next";
 import "./globals.css";
 
 export const metadata: Metadata = {
+  metadataBase: new URL("https://nwodor.xyz"),
   title: "Success Nwodor-Joseph | Software Engineer",
   description:
     "Portfolio of Success Nwodor-Joseph, an IT administrator, software developer, and data analyst in Edmonton.",

@@ -79,17 +79,13 @@ import {
   SiTypescript,
 } from "react-icons/si";
 import BottomNav from "./bottom-nav";
+import {
+  firebaseConfig,
+  getPublicPostImageSrc,
+  getPostPreview,
+  type Post,
+} from "./blog-data";
 import { useTypewriter } from "./use-typewriter";
-
-type Post = {
-  id: string;
-  title: string;
-  tag: string;
-  content: string;
-  contentHtml?: string;
-  imageUrl?: string;
-  date: string;
-};
 
 type PostDraft = {
   title: string;
@@ -156,17 +152,6 @@ const navItems = [
 
 type SectionId = (typeof navItems)[number][0];
 
-const firebaseConfig = {
-  apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY ?? "AIzaSyAR763_rkNDoRUWSa5krBgbYY6MQ0bp1Jg",
-  authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN ?? "portfolio-433e3.firebaseapp.com",
-  projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID ?? "portfolio-433e3",
-  storageBucket:
-    process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET ?? "portfolio-433e3.firebasestorage.app",
-  messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID ?? "90818969374",
-  appId:
-    process.env.NEXT_PUBLIC_FIREBASE_APP_ID ?? "1:90818969374:web:cad68255161b54609e530f",
-};
-
 const EMAILJS_PUBLIC_KEY =
   process.env.NEXT_PUBLIC_EMAILJS_PUBLIC_KEY ?? "uSpzM5E6mlIIeSi5z";
 const EMAILJS_SERVICE_ID =
@@ -175,7 +160,6 @@ const EMAILJS_TEMPLATE_ID =
   process.env.NEXT_PUBLIC_EMAILJS_TEMPLATE_ID ?? "template_q2bustc";
 
 const LS_KEY = "portfolio_blog_posts";
-const DEFAULT_POST_IMAGE = "/img/article-workspace.jpg";
 
 // Hero intro lines, typed out in order on load. Kept module-level so the
 // reference stays stable for the typewriter hook.
@@ -309,12 +293,7 @@ function isValidImageSrc(src: string) {
 }
 
 function getPostImageSrc(post: Post) {
-  return post.imageUrl?.trim() || DEFAULT_POST_IMAGE;
-}
-
-function getPostPreview(post: Post) {
-  const source = post.contentHtml || post.content;
-  return source.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+  return getPublicPostImageSrc(post.imageUrl);
 }
 
 function readFileAsDataUrl(file: File) {
@@ -762,12 +741,13 @@ function Modal({
 
 type PortfolioClientProps = {
   initialSection?: SectionId;
+  initialPosts?: Post[];
 };
 
-export default function PortfolioClient({ initialSection = "home" }: PortfolioClientProps) {
+export default function PortfolioClient({ initialSection = "home", initialPosts = [] }: PortfolioClientProps) {
   const [activeSection, setActiveSection] = useState(initialSection);
   const hero = useTypewriter(HERO_SEGMENTS, { speed: 22, startDelay: 350, linePause: 240 });
-  const [posts, setPosts] = useState<Post[]>([]);
+  const [posts, setPosts] = useState<Post[]>(initialPosts);
   const [selectedPost, setSelectedPost] = useState<Post | null>(null);
   const [writeOpen, setWriteOpen] = useState(false);
   const [adminOpen, setAdminOpen] = useState(false);
@@ -836,7 +816,9 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
 
   useEffect(() => {
     const localPosts = getLocalPosts();
-    queueMicrotask(() => setPosts(localPosts));
+    if (localPosts.length) {
+      queueMicrotask(() => setPosts(localPosts));
+    }
 
     if (!db) {
       queueMicrotask(() => setIsAdmin(true));
