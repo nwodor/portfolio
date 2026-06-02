@@ -35,6 +35,7 @@ import {
 import {
   useEffect,
   useMemo,
+  useRef,
   useState,
   type ChangeEvent,
   type FormEvent,
@@ -96,6 +97,17 @@ type PostDraft = {
   content: string;
   contentHtml: string;
   imageUrl: string;
+};
+
+type MammothBrowserModule = {
+  convertToHtml?: (input: {
+    arrayBuffer: ArrayBuffer;
+  }) => Promise<{ value: string; messages: { type: string; message: string }[] }>;
+  default?: {
+    convertToHtml?: (input: {
+      arrayBuffer: ArrayBuffer;
+    }) => Promise<{ value: string; messages: { type: string; message: string }[] }>;
+  };
 };
 
 type ContactDraft = {
@@ -343,6 +355,53 @@ function sanitizePostHtml(html: string) {
   return doc.body.firstElementChild?.innerHTML.trim() ?? "";
 }
 
+function getEditorTextFromHtml(html: string) {
+  if (typeof window === "undefined") return "";
+
+  const doc = new DOMParser().parseFromString(html, "text/html");
+  const lines: string[] = [];
+
+  const appendLine = (line: string) => {
+    const cleaned = line.replace(/\s+/g, " ").trim();
+    if (cleaned) lines.push(cleaned);
+  };
+
+  doc.body.childNodes.forEach((node) => {
+    if (node.nodeType === Node.TEXT_NODE) {
+      appendLine(node.textContent ?? "");
+      return;
+    }
+
+    if (node.nodeType !== Node.ELEMENT_NODE) return;
+    const element = node as HTMLElement;
+    const text = element.textContent ?? "";
+
+    if (element.tagName === "LI") {
+      appendLine(`- ${text}`);
+      return;
+    }
+
+    if (element.tagName === "UL" || element.tagName === "OL") {
+      element.querySelectorAll("li").forEach((item) => appendLine(`- ${item.textContent ?? ""}`));
+      return;
+    }
+
+    appendLine(text);
+  });
+
+  return lines.join("\n\n");
+}
+
+async function convertWordFileToHtml(file: File) {
+  const mammoth = (await import("mammoth/mammoth.browser.js")) as MammothBrowserModule;
+  const convertToHtml = mammoth.convertToHtml ?? mammoth.default?.convertToHtml;
+  if (!convertToHtml) {
+    throw new Error("Word import is unavailable in this browser build.");
+  }
+
+  return convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+}
+
 function Reveal({
   children,
   className,
@@ -527,6 +586,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
     contentHtml: "",
     imageUrl: "",
   });
+  const postContentRef = useRef<HTMLTextAreaElement>(null);
   const [postStatus, setPostStatus] = useState("");
   const [adminStatus, setAdminStatus] = useState("");
   const [contactStatus, setContactStatus] = useState("");
@@ -793,20 +853,18 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
 
     try {
       setPostStatus("Importing Word document...");
-      const mammoth = await import("mammoth/mammoth.browser");
-      const buffer = await file.arrayBuffer();
-      const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+      const result = await convertWordFileToHtml(file);
       const contentHtml = sanitizePostHtml(result.value);
-      const text = new DOMParser()
-        .parseFromString(contentHtml, "text/html")
-        .body.textContent?.replace(/\s+/g, " ")
-        .trim();
+      const text = getEditorTextFromHtml(contentHtml);
 
       if (!contentHtml || !text) {
         setPostStatus("That Word file did not contain readable blog content.");
         return;
       }
 
+      if (postContentRef.current) {
+        postContentRef.current.value = text;
+      }
       setPostDraft((draft) => ({ ...draft, content: text, contentHtml }));
       setPostStatus(
         result.messages.length
@@ -1600,6 +1658,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
             <label htmlFor="post-content">Content</label>
             <textarea
               id="post-content"
+              ref={postContentRef}
               className="tall-textarea"
               placeholder="Write your post here..."
               value={postDraft.content}
