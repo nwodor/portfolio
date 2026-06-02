@@ -1,7 +1,7 @@
 import type { Metadata } from "next";
 import { cache } from "react";
 import PortfolioClient from "../portfolio-client";
-import { getPostPreview, getPublicPostImageSrc, getPublishedPosts } from "../blog-data";
+import { getPostPreview, getSocialPostImageSrc, getPublishedPosts } from "../blog-data";
 
 const blogUrl = "https://nwodor.xyz/blog";
 const getBlogPosts = cache(getPublishedPosts);
@@ -17,7 +17,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const description = latestPost
     ? getPostPreview(latestPost).slice(0, 155)
     : "Technical notes, project writeups, and automation articles from Success Nwodor-Joseph.";
-  const image = getPublicPostImageSrc(latestPost?.imageUrl);
+  const image = getSocialPostImageSrc(latestPost?.imageUrl);
 
   return {
     title,

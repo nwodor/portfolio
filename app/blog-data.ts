@@ -31,6 +31,11 @@ export function getPostPreview(post: Pick<Post, "content" | "contentHtml">) {
 
 export function getPublicPostImageSrc(imageUrl?: string) {
   const src = imageUrl?.trim() ?? "";
+  return src || DEFAULT_POST_IMAGE;
+}
+
+export function getSocialPostImageSrc(imageUrl?: string) {
+  const src = imageUrl?.trim() ?? "";
   if (!src || src.startsWith("data:image/")) return DEFAULT_POST_IMAGE;
   return src;
 }
@@ -64,7 +69,7 @@ export async function getPublishedPosts(): Promise<Post[]> {
         tag: data.tag ?? "Blog",
         content: data.content ?? "",
         contentHtml: data.contentHtml ?? "",
-        imageUrl: getPublicPostImageSrc(data.imageUrl),
+        imageUrl: data.imageUrl ?? "",
         date,
       };
     });
