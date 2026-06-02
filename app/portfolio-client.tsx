@@ -32,7 +32,14 @@ import {
   Sparkles,
   X,
 } from "lucide-react";
-import { useEffect, useMemo, useState, type FormEvent, type ReactNode } from "react";
+import {
+  useEffect,
+  useMemo,
+  useState,
+  type ChangeEvent,
+  type FormEvent,
+  type ReactNode,
+} from "react";
 import type { IconType } from "react-icons";
 import {
   FaCode,
@@ -78,6 +85,7 @@ type Post = {
   title: string;
   tag: string;
   content: string;
+  contentHtml?: string;
   imageUrl?: string;
   date: string;
 };
@@ -86,6 +94,7 @@ type PostDraft = {
   title: string;
   tag: string;
   content: string;
+  contentHtml: string;
   imageUrl: string;
 };
 
@@ -251,11 +260,87 @@ function saveLocalPosts(posts: Post[]) {
 }
 
 function isValidImageSrc(src: string) {
-  return !src || src.startsWith("/") || src.startsWith("https://") || src.startsWith("http://");
+  return (
+    !src ||
+    src.startsWith("/") ||
+    src.startsWith("https://") ||
+    src.startsWith("http://") ||
+    src.startsWith("data:image/")
+  );
 }
 
 function getPostImageSrc(post: Post) {
   return post.imageUrl?.trim() || DEFAULT_POST_IMAGE;
+}
+
+function getPostPreview(post: Post) {
+  const source = post.contentHtml || post.content;
+  return source.replace(/<[^>]*>/g, " ").replace(/\s+/g, " ").trim();
+}
+
+function readFileAsDataUrl(file: File) {
+  return new Promise<string>((resolve, reject) => {
+    const reader = new FileReader();
+    reader.addEventListener("load", () => resolve(String(reader.result ?? "")));
+    reader.addEventListener("error", () => reject(reader.error ?? new Error("Unable to read file.")));
+    reader.readAsDataURL(file);
+  });
+}
+
+function sanitizePostHtml(html: string) {
+  if (typeof window === "undefined") return "";
+
+  const parser = new DOMParser();
+  const doc = parser.parseFromString(`<div>${html}</div>`, "text/html");
+  const allowedTags = new Set([
+    "A",
+    "B",
+    "BLOCKQUOTE",
+    "BR",
+    "EM",
+    "H1",
+    "H2",
+    "H3",
+    "H4",
+    "LI",
+    "OL",
+    "P",
+    "STRONG",
+    "U",
+    "UL",
+  ]);
+
+  const cleanNode = (node: Node) => {
+    Array.from(node.childNodes).forEach((child) => {
+      if (child.nodeType !== Node.ELEMENT_NODE) return;
+
+      const element = child as HTMLElement;
+      if (!allowedTags.has(element.tagName)) {
+        const replacementNodes = Array.from(element.childNodes);
+        element.replaceWith(...replacementNodes);
+        replacementNodes.forEach(cleanNode);
+        return;
+      }
+
+      Array.from(element.attributes).forEach((attribute) => {
+        const attrName = attribute.name.toLowerCase();
+        if (element.tagName === "A" && attrName === "href") {
+          const href = element.getAttribute("href") ?? "";
+          if (/^(https?:|mailto:|tel:)/i.test(href)) {
+            element.setAttribute("target", "_blank");
+            element.setAttribute("rel", "noopener noreferrer");
+            return;
+          }
+        }
+        element.removeAttribute(attribute.name);
+      });
+
+      cleanNode(element);
+    });
+  };
+
+  cleanNode(doc.body);
+  return doc.body.firstElementChild?.innerHTML.trim() ?? "";
 }
 
 function Reveal({
@@ -439,6 +524,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
     title: "",
     tag: "",
     content: "",
+    contentHtml: "",
     imageUrl: "",
   });
   const [postStatus, setPostStatus] = useState("");
@@ -517,6 +603,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
             title?: string;
             tag?: string;
             content?: string;
+            contentHtml?: string;
             imageUrl?: string;
             createdAt?: { toDate?: () => Date };
           };
@@ -526,6 +613,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
             title: data.title ?? "",
             tag: data.tag ?? "Post",
             content: data.content ?? "",
+            contentHtml: data.contentHtml ?? "",
             imageUrl: data.imageUrl ?? "",
             date:
               data.createdAt?.toDate?.().toLocaleDateString("en-CA", {
@@ -550,7 +638,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
 
   const resetPostDraft = () => {
     setEditingId(null);
-    setPostDraft({ title: "", tag: "", content: "", imageUrl: "" });
+    setPostDraft({ title: "", tag: "", content: "", contentHtml: "", imageUrl: "" });
     setPostStatus("");
   };
 
@@ -564,6 +652,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
           title?: string;
           tag?: string;
           content?: string;
+          contentHtml?: string;
           imageUrl?: string;
           createdAt?: { toDate?: () => Date };
         };
@@ -573,6 +662,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
           title: data.title ?? "",
           tag: data.tag ?? "Post",
           content: data.content ?? "",
+          contentHtml: data.contentHtml ?? "",
           imageUrl: data.imageUrl ?? "",
           date:
             data.createdAt?.toDate?.().toLocaleDateString("en-CA", {
@@ -590,6 +680,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
     const title = postDraft.title.trim();
     const tag = postDraft.tag.trim();
     const content = postDraft.content.trim();
+    const contentHtml = sanitizePostHtml(postDraft.contentHtml);
     const imageUrl = postDraft.imageUrl.trim();
 
     if (!title || !content) {
@@ -606,7 +697,13 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
       if (firebaseReady && db) {
         if (editingId) {
           setPostStatus("Updating...");
-          await updateDoc(doc(db, "posts", editingId), { title, tag, content, imageUrl });
+          await updateDoc(doc(db, "posts", editingId), {
+            title,
+            tag,
+            content,
+            contentHtml,
+            imageUrl,
+          });
           setPostStatus("Post updated.");
         } else {
           setPostStatus("Publishing...");
@@ -614,6 +711,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
             title,
             tag,
             content,
+            contentHtml,
             imageUrl,
             createdAt: serverTimestamp(),
           });
@@ -624,7 +722,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
         let nextPosts: Post[];
         if (editingId) {
           nextPosts = posts.map((post) =>
-            post.id === editingId ? { ...post, title, tag, content, imageUrl } : post,
+            post.id === editingId ? { ...post, title, tag, content, contentHtml, imageUrl } : post,
           );
           setPostStatus("Post updated locally.");
         } else {
@@ -634,6 +732,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
               title,
               tag,
               content,
+              contentHtml,
               imageUrl,
               date: new Date().toLocaleDateString("en-CA", {
                 year: "numeric",
@@ -655,6 +754,69 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
       }, 900);
     } catch (error) {
       setPostStatus(error instanceof Error ? error.message : "Unable to save post.");
+    }
+  };
+
+  const handleCoverUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      setPostStatus("Choose an image file for the cover.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      const imageUrl = await readFileAsDataUrl(file);
+      setPostDraft((draft) => ({ ...draft, imageUrl }));
+      setPostStatus(`Cover loaded: ${file.name}`);
+    } catch {
+      setPostStatus("Unable to read that cover image.");
+    } finally {
+      event.target.value = "";
+    }
+  };
+
+  const handleWordUpload = async (event: ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const isDocx =
+      file.name.toLowerCase().endsWith(".docx") ||
+      file.type === "application/vnd.openxmlformats-officedocument.wordprocessingml.document";
+    if (!isDocx) {
+      setPostStatus("Choose a .docx Word file.");
+      event.target.value = "";
+      return;
+    }
+
+    try {
+      setPostStatus("Importing Word document...");
+      const mammoth = await import("mammoth/mammoth.browser");
+      const buffer = await file.arrayBuffer();
+      const result = await mammoth.convertToHtml({ arrayBuffer: buffer });
+      const contentHtml = sanitizePostHtml(result.value);
+      const text = new DOMParser()
+        .parseFromString(contentHtml, "text/html")
+        .body.textContent?.replace(/\s+/g, " ")
+        .trim();
+
+      if (!contentHtml || !text) {
+        setPostStatus("That Word file did not contain readable blog content.");
+        return;
+      }
+
+      setPostDraft((draft) => ({ ...draft, content: text, contentHtml }));
+      setPostStatus(
+        result.messages.length
+          ? "Word document imported. Review the formatting before publishing."
+          : "Word document imported with links preserved.",
+      );
+    } catch (error) {
+      setPostStatus(error instanceof Error ? error.message : "Unable to import that Word file.");
+    } finally {
+      event.target.value = "";
     }
   };
 
@@ -1137,8 +1299,8 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
                       <div className="blog-tag">{post.tag || "Post"}</div>
                       <h3>{post.title}</h3>
                       <p>
-                        {post.content.slice(0, 100)}
-                        {post.content.length > 100 ? "..." : ""}
+                        {getPostPreview(post).slice(0, 100)}
+                        {getPostPreview(post).length > 100 ? "..." : ""}
                       </p>
                       <div className="blog-date">{post.date}</div>
                       {isAdmin ? (
@@ -1152,6 +1314,7 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
                                 title: post.title,
                                 tag: post.tag,
                                 content: post.content,
+                                contentHtml: post.contentHtml ?? "",
                                 imageUrl: post.imageUrl ?? "",
                               });
                               setWriteOpen(true);
@@ -1305,7 +1468,14 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
                   className="modal-post-photo"
                 />
               </div>
-              <p className="modal-content">{selectedPost.content}</p>
+              {selectedPost.contentHtml ? (
+                <div
+                  className="modal-content rich-post-content"
+                  dangerouslySetInnerHTML={{ __html: sanitizePostHtml(selectedPost.contentHtml) }}
+                />
+              ) : (
+                <p className="modal-content">{selectedPost.content}</p>
+              )}
               <div className="share-bar">
                 <span className="share-label">Share</span>
                 <a
@@ -1403,6 +1573,30 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
             />
           </div>
           <div className="form-group">
+            <label htmlFor="post-cover-file">Cover Image</label>
+            <input id="post-cover-file" type="file" accept="image/*" onChange={handleCoverUpload} />
+            {postDraft.imageUrl.startsWith("data:image/") ? (
+              <div className="blog-cover-preview">
+                <Image
+                  src={postDraft.imageUrl}
+                  alt="Selected blog cover preview"
+                  fill
+                  sizes="160px"
+                  className="blog-cover-preview-img"
+                />
+              </div>
+            ) : null}
+          </div>
+          <div className="form-group">
+            <label htmlFor="post-word-file">Word Document</label>
+            <input
+              id="post-word-file"
+              type="file"
+              accept=".docx,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+              onChange={handleWordUpload}
+            />
+          </div>
+          <div className="form-group">
             <label htmlFor="post-content">Content</label>
             <textarea
               id="post-content"
@@ -1410,7 +1604,11 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
               placeholder="Write your post here..."
               value={postDraft.content}
               onChange={(event) =>
-                setPostDraft((draft) => ({ ...draft, content: event.target.value }))
+                setPostDraft((draft) => ({
+                  ...draft,
+                  content: event.target.value,
+                  contentHtml: "",
+                }))
               }
             />
           </div>

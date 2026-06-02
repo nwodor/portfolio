@@ -1156,12 +1156,32 @@ section {
   box-shadow: 0 0 0 3px rgba(200, 247, 58, 0.06);
 }
 
+.form-group input[type="file"] {
+  cursor: pointer;
+  color: #777;
+}
+
 .form-group textarea {
   min-height: 140px;
 }
 
 .tall-textarea {
   min-height: 210px !important;
+}
+
+.blog-cover-preview {
+  position: relative;
+  width: 160px;
+  aspect-ratio: 16 / 10;
+  overflow: hidden;
+  margin-top: 0.75rem;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: #111;
+}
+
+.blog-cover-preview-img {
+  object-fit: cover;
 }
 
 .form-status {
@@ -1248,6 +1268,38 @@ section {
   font-size: 0.85rem;
   line-height: 1.9;
   white-space: pre-wrap;
+}
+
+.rich-post-content {
+  white-space: normal;
+}
+
+.rich-post-content p,
+.rich-post-content ul,
+.rich-post-content ol,
+.rich-post-content blockquote {
+  margin-bottom: 1rem;
+}
+
+.rich-post-content ul,
+.rich-post-content ol {
+  padding-left: 1.25rem;
+}
+
+.rich-post-content h1,
+.rich-post-content h2,
+.rich-post-content h3,
+.rich-post-content h4 {
+  margin: 1.4rem 0 0.7rem;
+  color: #e6e6e6;
+  font-family: "Space Grotesk", sans-serif;
+  line-height: 1.2;
+}
+
+.rich-post-content a {
+  color: var(--lime);
+  text-decoration: underline;
+  text-underline-offset: 0.18em;
 }
 
 .modal-close {
