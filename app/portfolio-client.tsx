@@ -100,13 +100,23 @@ type PostDraft = {
 };
 
 type MammothBrowserModule = {
+  images?: {
+    imgElement: (
+      converter: (image: {
+        altText?: string;
+        contentType: string;
+        read: (encoding: "base64") => Promise<string>;
+      }) => Promise<{ src: string; alt?: string }>,
+    ) => unknown;
+  };
   convertToHtml?: (input: {
     arrayBuffer: ArrayBuffer;
-  }) => Promise<{ value: string; messages: { type: string; message: string }[] }>;
+  }, options?: Record<string, unknown>) => Promise<{ value: string; messages: { type: string; message: string }[] }>;
   default?: {
+    images?: MammothBrowserModule["images"];
     convertToHtml?: (input: {
       arrayBuffer: ArrayBuffer;
-    }) => Promise<{ value: string; messages: { type: string; message: string }[] }>;
+    }, options?: Record<string, unknown>) => Promise<{ value: string; messages: { type: string; message: string }[] }>;
   };
 };
 
@@ -309,15 +319,25 @@ function sanitizePostHtml(html: string) {
     "B",
     "BLOCKQUOTE",
     "BR",
+    "CODE",
     "EM",
     "H1",
     "H2",
     "H3",
     "H4",
+    "HR",
+    "IMG",
     "LI",
     "OL",
     "P",
+    "PRE",
     "STRONG",
+    "TABLE",
+    "TBODY",
+    "TD",
+    "TH",
+    "THEAD",
+    "TR",
     "U",
     "UL",
   ]);
@@ -343,6 +363,13 @@ function sanitizePostHtml(html: string) {
             element.setAttribute("rel", "noopener noreferrer");
             return;
           }
+        }
+        if (element.tagName === "IMG") {
+          if (attrName === "src") {
+            const src = element.getAttribute("src") ?? "";
+            if (/^(data:image\/|https?:|\/)/i.test(src)) return;
+          }
+          if (attrName === "alt") return;
         }
         element.removeAttribute(attribute.name);
       });
@@ -376,6 +403,11 @@ function getEditorTextFromHtml(html: string) {
     const element = node as HTMLElement;
     const text = element.textContent ?? "";
 
+    if (element.tagName === "IMG") {
+      appendLine(`[Image: ${element.getAttribute("alt") || "imported diagram"}]`);
+      return;
+    }
+
     if (element.tagName === "LI") {
       appendLine(`- ${text}`);
       return;
@@ -383,6 +415,16 @@ function getEditorTextFromHtml(html: string) {
 
     if (element.tagName === "UL" || element.tagName === "OL") {
       element.querySelectorAll("li").forEach((item) => appendLine(`- ${item.textContent ?? ""}`));
+      return;
+    }
+
+    if (element.tagName === "TABLE") {
+      element.querySelectorAll("tr").forEach((row) => {
+        const cells = Array.from(row.querySelectorAll("th,td"))
+          .map((cell) => cell.textContent?.replace(/\s+/g, " ").trim())
+          .filter(Boolean);
+        appendLine(cells.join(" | "));
+      });
       return;
     }
 
@@ -395,11 +437,28 @@ function getEditorTextFromHtml(html: string) {
 async function convertWordFileToHtml(file: File) {
   const mammoth = (await import("mammoth/mammoth.browser.js")) as MammothBrowserModule;
   const convertToHtml = mammoth.convertToHtml ?? mammoth.default?.convertToHtml;
+  const images = mammoth.images ?? mammoth.default?.images;
   if (!convertToHtml) {
     throw new Error("Word import is unavailable in this browser build.");
   }
 
-  return convertToHtml({ arrayBuffer: await file.arrayBuffer() });
+  return convertToHtml(
+    { arrayBuffer: await file.arrayBuffer() },
+    {
+      convertImage: images?.imgElement(async (image) => ({
+        src: `data:${image.contentType};base64,${await image.read("base64")}`,
+        alt: image.altText || "Imported Word diagram",
+      })),
+      includeDefaultStyleMap: true,
+      styleMap: [
+        "p[style-name='Title'] => h1:fresh",
+        "p[style-name='Subtitle'] => h2:fresh",
+        "p[style-name='Heading 1'] => h2:fresh",
+        "p[style-name='Heading 2'] => h3:fresh",
+        "p[style-name='Heading 3'] => h4:fresh",
+      ],
+    },
+  );
 }
 
 function Reveal({
@@ -1671,6 +1730,15 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
               }
             />
           </div>
+          {postDraft.contentHtml ? (
+            <div className="form-group">
+              <label>Imported Word Preview</label>
+              <div
+                className="word-import-preview rich-post-content"
+                dangerouslySetInnerHTML={{ __html: sanitizePostHtml(postDraft.contentHtml) }}
+              />
+            </div>
+          ) : null}
           <button className="btn-lime full-width" type="submit">
             {editingId ? "Update Post" : "Publish Post"} <Send size={15} />
           </button>

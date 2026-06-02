@@ -1184,6 +1184,15 @@ section {
   object-fit: cover;
 }
 
+.word-import-preview {
+  max-height: 280px;
+  overflow: auto;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+  background: rgba(10, 10, 10, 0.86);
+  padding: 1rem;
+}
+
 .form-status {
   margin-top: 0.85rem;
   font-size: 0.72rem;
@@ -1300,6 +1309,30 @@ section {
   color: var(--lime);
   text-decoration: underline;
   text-underline-offset: 0.18em;
+}
+
+.rich-post-content img {
+  display: block;
+  max-width: 100%;
+  height: auto;
+  margin: 1rem 0;
+  border: 1px solid var(--border);
+  border-radius: 6px;
+}
+
+.rich-post-content table {
+  width: 100%;
+  margin: 1rem 0;
+  border-collapse: collapse;
+  font-size: 0.78rem;
+}
+
+.rich-post-content th,
+.rich-post-content td {
+  border: 1px solid var(--border);
+  padding: 0.55rem;
+  text-align: left;
+  vertical-align: top;
 }
 
 .modal-close {
