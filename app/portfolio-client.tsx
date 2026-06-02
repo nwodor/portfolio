@@ -120,6 +120,23 @@ type MammothBrowserModule = {
   };
 };
 
+type DocxPreviewModule = {
+  renderAsync?: (
+    data: Blob | ArrayBuffer,
+    bodyContainer: HTMLElement,
+    styleContainer?: HTMLElement,
+    options?: Record<string, unknown>,
+  ) => Promise<void>;
+  default?: DocxPreviewModule;
+};
+
+type WordImportResult = {
+  html: string;
+  text: string;
+  source: "rendered" | "mammoth";
+  warnings: string[];
+};
+
 type ContactDraft = {
   name: string;
   email: string;
@@ -320,7 +337,10 @@ function sanitizePostHtml(html: string) {
     "BLOCKQUOTE",
     "BR",
     "CODE",
+    "DIV",
     "EM",
+    "FIGURE",
+    "FIGCAPTION",
     "H1",
     "H2",
     "H3",
@@ -331,6 +351,8 @@ function sanitizePostHtml(html: string) {
     "OL",
     "P",
     "PRE",
+    "SECTION",
+    "SPAN",
     "STRONG",
     "TABLE",
     "TBODY",
@@ -367,9 +389,24 @@ function sanitizePostHtml(html: string) {
         if (element.tagName === "IMG") {
           if (attrName === "src") {
             const src = element.getAttribute("src") ?? "";
-            if (/^(data:image\/|https?:|\/)/i.test(src)) return;
+            if (/^(data:image\/|blob:|https?:|\/)/i.test(src)) return;
           }
           if (attrName === "alt") return;
+        }
+        if (attrName === "style") {
+          const safeStyle = attribute.value
+            .split(";")
+            .map((rule) => rule.trim())
+            .filter((rule) =>
+              /^(text-align|font-weight|font-style|text-decoration|width|max-width|height|margin-left|padding-left):/i.test(
+                rule,
+              ),
+            )
+            .join("; ");
+          if (safeStyle) {
+            element.setAttribute("style", safeStyle);
+            return;
+          }
         }
         element.removeAttribute(attribute.name);
       });
@@ -434,7 +471,79 @@ function getEditorTextFromHtml(html: string) {
   return lines.join("\n\n");
 }
 
-async function convertWordFileToHtml(file: File) {
+function getTextScore(text: string) {
+  return text.replace(/\s+/g, " ").trim().length;
+}
+
+async function inlineBlobImages(container: HTMLElement) {
+  const images = Array.from(container.querySelectorAll("img"));
+  await Promise.all(
+    images.map(async (image) => {
+      const src = image.getAttribute("src") ?? "";
+      if (!src.startsWith("blob:")) return;
+
+      const response = await fetch(src);
+      const blob = await response.blob();
+      image.setAttribute("src", await readFileAsDataUrl(blobToFile(blob, "word-diagram")));
+      URL.revokeObjectURL(src);
+    }),
+  );
+}
+
+function blobToFile(blob: Blob, fileName: string) {
+  return new File([blob], fileName, { type: blob.type });
+}
+
+async function renderWordFileToHtml(file: File): Promise<WordImportResult | null> {
+  if (typeof window === "undefined") return null;
+
+  const docxPreview = (await import("docx-preview")) as DocxPreviewModule;
+  const renderAsync = docxPreview.renderAsync ?? docxPreview.default?.renderAsync;
+  if (!renderAsync) return null;
+
+  const wrapper = document.createElement("div");
+  const styleContainer = document.createElement("div");
+  wrapper.style.position = "fixed";
+  wrapper.style.left = "-10000px";
+  wrapper.style.top = "0";
+  wrapper.style.width = "900px";
+  wrapper.style.pointerEvents = "none";
+  wrapper.setAttribute("aria-hidden", "true");
+  document.body.appendChild(wrapper);
+  document.body.appendChild(styleContainer);
+
+  try {
+    await renderAsync(await file.arrayBuffer(), wrapper, styleContainer, {
+      className: "imported-docx",
+      inWrapper: false,
+      ignoreFonts: true,
+      ignoreHeight: true,
+      ignoreWidth: false,
+      renderComments: false,
+      renderEndnotes: true,
+      renderFooters: true,
+      renderFootnotes: true,
+      renderHeaders: true,
+    });
+    await inlineBlobImages(wrapper);
+
+    const html = sanitizePostHtml(wrapper.innerHTML);
+    const text = getEditorTextFromHtml(html);
+    return html && text
+      ? {
+          html,
+          text,
+          source: "rendered",
+          warnings: [],
+        }
+      : null;
+  } finally {
+    wrapper.remove();
+    styleContainer.remove();
+  }
+}
+
+async function convertWordFileWithMammoth(file: File): Promise<WordImportResult | null> {
   const mammoth = (await import("mammoth/mammoth.browser.js")) as MammothBrowserModule;
   const convertToHtml = mammoth.convertToHtml ?? mammoth.default?.convertToHtml;
   const images = mammoth.images ?? mammoth.default?.images;
@@ -442,7 +551,7 @@ async function convertWordFileToHtml(file: File) {
     throw new Error("Word import is unavailable in this browser build.");
   }
 
-  return convertToHtml(
+  const result = await convertToHtml(
     { arrayBuffer: await file.arrayBuffer() },
     {
       convertImage: images?.imgElement(async (image) => ({
@@ -459,6 +568,34 @@ async function convertWordFileToHtml(file: File) {
       ],
     },
   );
+  const html = sanitizePostHtml(result.value);
+  const text = getEditorTextFromHtml(html);
+  return html && text
+    ? {
+        html,
+        text,
+        source: "mammoth",
+        warnings: result.messages.map((message) => message.message),
+      }
+    : null;
+}
+
+async function importWordFile(file: File): Promise<WordImportResult> {
+  const [rendered, mammoth] = await Promise.allSettled([
+    renderWordFileToHtml(file),
+    convertWordFileWithMammoth(file),
+  ]);
+
+  const candidates = [rendered, mammoth]
+    .flatMap((result) => (result.status === "fulfilled" && result.value ? [result.value] : []))
+    .sort((a, b) => getTextScore(b.text) - getTextScore(a.text));
+
+  if (candidates.length) return candidates[0];
+
+  const errors = [rendered, mammoth]
+    .flatMap((result) => (result.status === "rejected" ? [result.reason] : []))
+    .map((error) => (error instanceof Error ? error.message : String(error)));
+  throw new Error(errors[0] || "That Word file did not contain readable blog content.");
 }
 
 function Reveal({
@@ -912,9 +1049,9 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
 
     try {
       setPostStatus("Importing Word document...");
-      const result = await convertWordFileToHtml(file);
-      const contentHtml = sanitizePostHtml(result.value);
-      const text = getEditorTextFromHtml(contentHtml);
+      const result = await importWordFile(file);
+      const contentHtml = result.html;
+      const text = result.text;
 
       if (!contentHtml || !text) {
         setPostStatus("That Word file did not contain readable blog content.");
@@ -926,9 +1063,9 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
       }
       setPostDraft((draft) => ({ ...draft, content: text, contentHtml }));
       setPostStatus(
-        result.messages.length
-          ? "Word document imported. Review the formatting before publishing."
-          : "Word document imported with links preserved.",
+        result.warnings.length
+          ? `Word document imported from ${result.source} content. Review the formatting before publishing.`
+          : `Word document imported from ${result.source} content.`,
       );
     } catch (error) {
       setPostStatus(error instanceof Error ? error.message : "Unable to import that Word file.");
@@ -1731,8 +1868,11 @@ export default function PortfolioClient({ initialSection = "home" }: PortfolioCl
             />
           </div>
           {postDraft.contentHtml ? (
-            <div className="form-group">
-              <label>Imported Word Preview</label>
+            <div className="word-import-content">
+              <div className="word-import-content-header">
+                <span>Imported Word Content</span>
+                <span>{getTextScore(postDraft.content).toLocaleString()} characters</span>
+              </div>
               <div
                 className="word-import-preview rich-post-content"
                 dangerouslySetInnerHTML={{ __html: sanitizePostHtml(postDraft.contentHtml) }}

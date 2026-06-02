@@ -1184,6 +1184,23 @@ section {
   object-fit: cover;
 }
 
+.word-import-content {
+  margin-top: -0.3rem;
+  margin-bottom: 0.9rem;
+}
+
+.word-import-content-header {
+  display: flex;
+  justify-content: space-between;
+  gap: 1rem;
+  margin-bottom: 0.5rem;
+  color: #666;
+  font-family: "JetBrains Mono", monospace;
+  font-size: 0.66rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
 .word-import-preview {
   max-height: 280px;
   overflow: auto;
@@ -1318,6 +1335,11 @@ section {
   margin: 1rem 0;
   border: 1px solid var(--border);
   border-radius: 6px;
+}
+
+.rich-post-content section,
+.rich-post-content div {
+  max-width: 100%;
 }
 
 .rich-post-content table {

@@ -1,5 +1,7 @@
 import JSZip from "jszip";
 import mammoth from "mammoth/mammoth.browser.js";
+import { JSDOM } from "jsdom";
+import { renderAsync } from "docx-preview";
 
 const imageBase64 =
   "iVBORw0KGgoAAAANSUhEUgAAAAwAAAAMCAYAAABWdVznAAAAIklEQVR42mP8z8AARLJgwiA+YBQjRgYGBgYGBgYAl4cCFSHEXYQAAAAASUVORK5CYII=";
@@ -59,7 +61,26 @@ async function createFixtureDocx() {
       <w:tr><w:tc>${paragraph("Metric")}</w:tc><w:tc>${paragraph("Value")}</w:tc></w:tr>
       <w:tr><w:tc>${paragraph("Automation")}</w:tc><w:tc>${paragraph("Working")}</w:tc></w:tr>
     </w:tbl>
-    <w:p><w:r><w:drawing><wp:inline><a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture"><pic:pic><pic:blipFill><a:blip r:embed="rImage1"/></pic:blipFill></pic:pic></a:graphicData></a:graphic></wp:inline></w:drawing></w:r></w:p>
+    <w:p><w:r><w:drawing><wp:inline>
+      <wp:extent cx="182880" cy="182880"/>
+      <wp:docPr id="1" name="Fixture diagram" descr="Fixture diagram"/>
+      <a:graphic><a:graphicData uri="http://schemas.openxmlformats.org/drawingml/2006/picture">
+        <pic:pic>
+          <pic:nvPicPr>
+            <pic:cNvPr id="0" name="diagram.png" descr="Fixture diagram"/>
+            <pic:cNvPicPr/>
+          </pic:nvPicPr>
+          <pic:blipFill>
+            <a:blip r:embed="rImage1"/>
+            <a:stretch><a:fillRect/></a:stretch>
+          </pic:blipFill>
+          <pic:spPr>
+            <a:xfrm><a:off x="0" y="0"/><a:ext cx="182880" cy="182880"/></a:xfrm>
+            <a:prstGeom prst="rect"><a:avLst/></a:prstGeom>
+          </pic:spPr>
+        </pic:pic>
+      </a:graphicData></a:graphic>
+    </wp:inline></w:drawing></w:r></w:p>
   </w:body>
 </w:document>`,
   );
@@ -68,7 +89,16 @@ async function createFixtureDocx() {
 }
 
 const docx = await createFixtureDocx();
-const result = await mammoth.convertToHtml(
+
+function assertContains(label, html, required) {
+  const missing = required.filter((item) => !html.includes(item));
+  if (missing.length) {
+    console.error(html);
+    throw new Error(`${label} missed: ${missing.join(", ")}`);
+  }
+}
+
+const mammothResult = await mammoth.convertToHtml(
   { arrayBuffer: docx.buffer.slice(docx.byteOffset, docx.byteOffset + docx.byteLength) },
   {
     convertImage: mammoth.images.imgElement(async (image) => ({
@@ -86,20 +116,51 @@ const result = await mammoth.convertToHtml(
   },
 );
 
-const required = [
+const requiredText = [
   "Fixture Blog Title",
   "actual first paragraph",
   "second paragraph with details",
   "portfolio source",
   "First imported bullet item",
   "Automation",
+];
+const requiredMammoth = [
+  ...requiredText,
   "data:image/png;base64,",
 ];
 
-const missing = required.filter((item) => !result.value.includes(item));
-if (missing.length) {
-  console.error(result.value);
-  throw new Error(`Word import fixture conversion missed: ${missing.join(", ")}`);
-}
+assertContains("Mammoth Word import fixture conversion", mammothResult.value, requiredMammoth);
 
-console.log("Word import fixture conversion includes title, body, link text, table text, and image data URL.");
+const dom = new JSDOM("<!doctype html><html><body></body></html>", {
+  pretendToBeVisual: true,
+  url: "https://example.com",
+});
+globalThis.window = dom.window;
+globalThis.document = dom.window.document;
+globalThis.DOMParser = dom.window.DOMParser;
+globalThis.XMLSerializer = dom.window.XMLSerializer;
+globalThis.HTMLElement = dom.window.HTMLElement;
+globalThis.Node = dom.window.Node;
+globalThis.Blob = dom.window.Blob;
+
+const renderedContainer = document.createElement("div");
+const renderedStyles = document.createElement("div");
+document.body.appendChild(renderedContainer);
+document.body.appendChild(renderedStyles);
+await renderAsync(docx.buffer.slice(docx.byteOffset, docx.byteOffset + docx.byteLength), renderedContainer, renderedStyles, {
+  className: "imported-docx",
+  inWrapper: false,
+  ignoreFonts: true,
+  ignoreHeight: true,
+  ignoreWidth: false,
+  renderComments: false,
+  renderEndnotes: true,
+  renderFooters: true,
+  renderFootnotes: true,
+  renderHeaders: true,
+});
+
+const renderedHtml = renderedContainer.innerHTML;
+assertContains("Rendered Word import fixture conversion", renderedHtml, requiredText);
+
+console.log("Word import fixture conversion includes title, body, link text, table text, and image content.");

@@ -12,6 +12,7 @@
   },
   "dependencies": {
     "@emailjs/browser": "4.4.1",
+    "docx-preview": "^0.3.7",
     "firebase": "12.12.1",
     "framer-motion": "12.38.0",
     "liquid-glass-react": "^1.1.1",
@@ -29,6 +30,7 @@
     "@types/react-dom": "19.2.3",
     "eslint": "9.39.4",
     "eslint-config-next": "16.2.4",
+    "jsdom": "^29.1.1",
     "typescript": "6.0.3"
   },
   "overrides": {
